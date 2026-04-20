@@ -1,0 +1,44 @@
+{
+  "include_any": {
+    "basic": [
+      "forensic",
+      "dfir",
+      "computer",
+      "artifact",
+      "cyber",
+      "incident",
+      "analysis"
+    ],
+    "anti-forensics": [
+      "anti",
+      "antiforensic",
+      "wiping",
+      "timestomping",
+      "stegano"
+    ],
+    "crime": [
+      "cybercrime",
+      "fraud"
+    ],
+    "ai": [
+      "artificial intelligence"
+    ],
+    "environment": [
+      "mobile",
+      "windows",
+      "network"
+    ],
+    "artifacts": [
+      "email",
+      "e-mail",
+      "messenger",
+      "cryptocurrency",
+      "wallet"
+    ],
+    "data": [
+      "credential"
+    ]
+
+  },
+  "exclude_any": []
+}
