@@ -83,13 +83,13 @@ def _load_scopus_subject_code_allowlist(path: Path) -> set[str]:
     raise ValueError(f"SCOPUS_SUBJECT_CODE_ALLOWLIST_PATH must be a JSON array: {path}")
 
 
-def _load_scopus_third_filter_keywords(path: Path) -> tuple[list[str], list[str]]:
+def _load_scopus_search_keywords(path: Path) -> list[str]:
     if not path.exists():
-        return [], []
+        return []
     with path.open("r", encoding="utf-8") as file:
         payload = json.load(file)
     if not isinstance(payload, dict):
-        raise ValueError(f"SCOPUS_THIRD_FILTER_KEYWORDS_PATH must be a JSON object: {path}")
+        raise ValueError(f"SCOPUS_KEYWORD_FILTER_KEYWORDS_PATH must be a JSON object: {path}")
 
     def _normalize_keywords(values: object) -> list[str]:
         if isinstance(values, dict):
@@ -115,46 +115,7 @@ def _load_scopus_third_filter_keywords(path: Path) -> tuple[list[str], list[str]
             result.append(keyword)
         return result
 
-    include_any = _normalize_keywords(payload.get("include_any"))
-    exclude_any = _normalize_keywords(payload.get("exclude_any"))
-    return include_any, exclude_any
-
-
-def _apply_third_keyword_filter(
-    papers: list[NormalizedPaper],
-    *,
-    include_any: list[str],
-    exclude_any: list[str],
-) -> tuple[list[NormalizedPaper], int]:
-    if not include_any and not exclude_any:
-        return papers, 0
-
-    lowered_include = [keyword.casefold() for keyword in include_any]
-    lowered_exclude = [keyword.casefold() for keyword in exclude_any]
-    filtered: list[NormalizedPaper] = []
-    dropped = 0
-
-    for paper in papers:
-        text = " ".join(
-            token
-            for token in [
-                paper.title or "",
-                paper.abstract or "",
-                " ".join(paper.keywords),
-            ]
-            if token
-        ).casefold()
-
-        if lowered_exclude and any(keyword in text for keyword in lowered_exclude):
-            dropped += 1
-            continue
-        if lowered_include and not any(keyword in text for keyword in lowered_include):
-            dropped += 1
-            continue
-
-        filtered.append(paper)
-
-    return filtered, dropped
+    return _normalize_keywords(payload.get("include_any"))
 
 
 def _build_scopus_collector(
@@ -330,21 +291,21 @@ def run_scopus_pipeline_yearly(
     log: Callable[[str, str], None],
 ) -> ScopusPipelineResult:
     scopus_collector = _build_scopus_collector(settings=settings, page_size=page_size)
-    query_terms = list(settings.extra_query_terms) + (extra_terms or [])
-    scopus_queries = build_scopus_queries(extra_terms=query_terms)
+    keyword_terms = _load_scopus_search_keywords(settings.scopus_keyword_filter_keywords_path)
+    query_terms = keyword_terms + list(settings.extra_query_terms) + (extra_terms or [])
+    scopus_queries = build_scopus_queries(keyword_terms=query_terms)
     allowed_subject_codes = _load_scopus_subject_code_allowlist(settings.scopus_subject_code_allowlist_path)
-    third_include_any, third_exclude_any = _load_scopus_third_filter_keywords(settings.scopus_third_filter_keywords_path)
     if allowed_subject_codes:
         log("3", f"Scopus subject-code filter ENABLED | allow={len(allowed_subject_codes)}")
     else:
         log("3", "Scopus subject-code filter DISABLED | allowlist empty")
-    if third_include_any or third_exclude_any:
+    if query_terms:
         log(
             "3",
-            f"Third keyword filter ENABLED | include_any={len(third_include_any)} exclude_any={len(third_exclude_any)}",
+            f"Search keyword query ENABLED | keyword_terms={len(query_terms)}",
         )
     else:
-        log("3", "Third keyword filter DISABLED | keyword lists empty")
+        log("3", "Search keyword query DISABLED | keyword list empty")
     state_scopus = None if force_full else db.get_state(settings.state_key_scopus_last_success_at)
     known_source_ids = db.all_scopus_source_ids()
 
@@ -441,18 +402,6 @@ def run_scopus_pipeline_yearly(
                 f"Subject-code filter END | query_index={index}/{total_queries} "
                 f"kept={len(incremental_batch)} dropped={dropped_by_subject}",
             )
-
-        third_filtered_batch, dropped_by_third = _apply_third_keyword_filter(
-            incremental_batch,
-            include_any=third_include_any,
-            exclude_any=third_exclude_any,
-        )
-        incremental_batch = third_filtered_batch
-        log(
-            "6",
-            f"Third keyword filter END | query_index={index}/{total_queries} "
-            f"kept={len(incremental_batch)} dropped={dropped_by_third}",
-        )
 
         summarized = summarize_papers(incremental_batch)
         relevant_count += len(summarized)

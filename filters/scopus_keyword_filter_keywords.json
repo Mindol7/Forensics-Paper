@@ -1,0 +1,42 @@
+{
+  "include_any": {
+	"Digital forensics": [
+		"Digital evidence identification",
+		"Digital evidence triage",
+		"Digital evidence preservation",
+		"Digital evidence collection",
+		"Digital evidence examination",
+		"Digital evidence analysis",
+		"Device forensics",
+		"Virtualization forensics",
+		"Container forensics",
+		"File system forensics",
+		"Operating system forensics",
+		"Application forensics",
+		"File forensics",
+		"Network forensics",
+		"Cloud forensics",
+		"Data aggregation",
+		"Event reconstruction",
+		"Event Reporting",
+		"Anti-forensic",
+		"Forensic infrastructure",
+		"Incident response",
+		"Multimedia forensics",
+		"Cryptocurrency forensics",
+		"Virtual assets",
+		"Industry forensics",
+		"AI forensics"
+	],
+    "basic": [
+      "forensic",
+      "dfir",
+      "computer",
+      "artifact",
+      "cyber",
+      "incident",
+      "analysis"
+    ]
+  },
+  "exclude_any": []
+}

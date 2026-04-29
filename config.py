@@ -39,7 +39,7 @@ class Settings:
     database_url: str = "sqlite:///kci_pipeline.db"
     export_dir: Path = Path("reports")
     scopus_subject_code_allowlist_path: Path = Path("filters/scopus_subject_codes.json")
-    scopus_third_filter_keywords_path: Path = Path("filters/scopus_third_filter_keywords.json")
+    scopus_keyword_filter_keywords_path: Path = Path("filters/scopus_keyword_filter_keywords.json")
     scopus_abstract_max_workers: int = 6
     state_key_last_success_at: str = "kci:last_success_at"
     state_key_scopus_last_success_at: str = "scopus:last_success_at"
@@ -68,6 +68,7 @@ def _parse_csv(value: str | None) -> tuple[str, ...]:
 def load_settings(validate: bool = True) -> Settings:
     service_key = os.getenv("KCI_SERVICE_KEY") or os.getenv("KCI_API_KEY")
     scopus_api_key = os.getenv("SCOPUS_API_KEY")
+    scopus_keyword_filter_keywords_path_raw = os.getenv("SCOPUS_KEYWORD_FILTER_KEYWORDS_PATH")
 
     settings = Settings(
         kci_service_key=service_key,
@@ -90,9 +91,7 @@ def load_settings(validate: bool = True) -> Settings:
         scopus_subject_code_allowlist_path=Path(
             os.getenv("SCOPUS_SUBJECT_CODE_ALLOWLIST_PATH", "filters/scopus_subject_codes.json")
         ),
-        scopus_third_filter_keywords_path=Path(
-            os.getenv("SCOPUS_THIRD_FILTER_KEYWORDS_PATH", "filters/scopus_third_filter_keywords.json")
-        ),
+        scopus_keyword_filter_keywords_path=Path(scopus_keyword_filter_keywords_path_raw or ""),
         scopus_abstract_max_workers=max(1, int(os.getenv("SCOPUS_ABSTRACT_MAX_WORKERS", "6"))),
         state_key_last_success_at=os.getenv("STATE_KEY_LAST_SUCCESS_AT", "kci:last_success_at"),
         state_key_scopus_last_success_at=os.getenv(
@@ -104,5 +103,7 @@ def load_settings(validate: bool = True) -> Settings:
 
     if validate and not settings.kci_service_key:
         raise ValueError("KCI_SERVICE_KEY (or KCI_API_KEY) is not set")
+    if not (scopus_keyword_filter_keywords_path_raw or "").strip():
+        raise ValueError("SCOPUS_KEYWORD_FILTER_KEYWORDS_PATH is not set")
 
     return settings
