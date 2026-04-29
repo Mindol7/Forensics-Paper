@@ -113,24 +113,54 @@ def _build_scopus_base_query_for_year(year: int) -> str:
     return f"PUBYEAR = {year} AND SUBJAREA({include_subjects})"
 
 
+def _to_scopus_proximity_term(term: str) -> str:
+    words = term.split()
+    if len(words) <= 1:
+        return words[0] if words else ""
+    return " W/10 ".join(words)
+
+
+def _build_title_abs_key_clause(terms: Iterable[str]) -> str:
+    normalized_terms: list[str] = []
+    seen: set[str] = set()
+    for term in terms:
+        normalized = _normalize_term(term)
+        if not normalized:
+            continue
+        key = normalized.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized_terms.append(normalized)
+
+    segments: list[str] = []
+    for term in normalized_terms:
+        proximity_term = _to_scopus_proximity_term(term)
+        if not proximity_term:
+            continue
+        segments.append(f"({proximity_term})")
+
+    if not segments:
+        return ""
+    return " OR ".join(segments)
+
+
 def build_scopus_queries(
-    extra_terms: Iterable[str] | None = None,
+    keyword_terms: Iterable[str] | None = None,
     *,
     target_years: Iterable[int] | None = None,
 ) -> list[ScopusQuery]:
     """Create Scopus query objects for each target year."""
     queries: list[ScopusQuery] = []
     years = tuple(target_years) if target_years is not None else get_scopus_target_years()
+    title_abs_key_clause = _build_title_abs_key_clause(keyword_terms or [])
+
     for year in years:
         base_query = _build_scopus_base_query_for_year(year)
-        queries.append(ScopusQuery(query=base_query))
-
-        if extra_terms:
-            for term in extra_terms:
-                normalized = _normalize_term(term)
-                if not normalized:
-                    continue
-                queries.append(ScopusQuery(query=f'{base_query} AND TITLE("{normalized}")'))
+        if title_abs_key_clause:
+            queries.append(ScopusQuery(query=f"TITLE-ABS-KEY({title_abs_key_clause}) AND {base_query}"))
+        else:
+            queries.append(ScopusQuery(query=base_query))
 
     deduped: list[ScopusQuery] = []
     seen: set[str] = set()
