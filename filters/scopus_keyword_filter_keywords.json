@@ -27,16 +27,7 @@
 		"Virtual assets",
 		"Industry forensics",
 		"AI forensics"
-	],
-    "basic": [
-      "forensic",
-      "dfir",
-      "computer",
-      "artifact",
-      "cyber",
-      "incident",
-      "analysis"
-    ]
+	]
   },
   "exclude_any": []
 }

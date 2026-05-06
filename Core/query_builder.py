@@ -117,7 +117,7 @@ def _to_scopus_proximity_term(term: str) -> str:
     words = term.split()
     if len(words) <= 1:
         return words[0] if words else ""
-    return " W/10 ".join(words)
+    return " W/16 ".join(words)
 
 
 def _build_title_abs_key_clause(terms: Iterable[str]) -> str:
