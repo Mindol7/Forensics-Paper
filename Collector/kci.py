@@ -109,6 +109,8 @@ class KciCollector:
             "recordCnt": self.page_size,
             "artiNm": query.arti_nm,
         }
+        if query.pubi_yr is not None:
+            params["pubiYr"] = query.pubi_yr
         if query.sere_id:
             params["sereId"] = query.sere_id
         if query.insi_id:

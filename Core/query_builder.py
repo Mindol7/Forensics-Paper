@@ -23,6 +23,7 @@ class KciQuery:
     arti_nm: str # 논문 제목 기반 검색 키워드
     sere_id: str | None = None # 학술지 ID
     insi_id: str | None = None # 기관 ID
+    pubi_yr: int | None = None
 
 
 @dataclass(frozen=True)
@@ -58,6 +59,7 @@ def build_kci_queries(
     extra_terms: Iterable[str] | None = None, # 사용자 정의 키워드
     sere_ids: Iterable[str] | None = None,
     insi_ids: Iterable[str] | None = None,
+    target_years: Iterable[int] | None = None,
 ) -> list[KciQuery]:
     """Create deduplicated KCI query objects.
 
@@ -74,22 +76,27 @@ def build_kci_queries(
             if normalized and normalized not in base_terms:
                 base_terms.append(normalized)
 
-    queries: list[KciQuery] = [KciQuery(arti_nm=term) for term in base_terms]
+    years = tuple(target_years) if target_years is not None else get_scopus_target_years()
+    queries: list[KciQuery] = []
+    for year in years:
+        queries.extend(KciQuery(arti_nm=term, pubi_yr=year) for term in base_terms)
 
     if sere_ids:
         for sere_id in sere_ids:
             for term in base_terms:
-                queries.append(KciQuery(arti_nm=term, sere_id=sere_id))
+                for year in years:
+                    queries.append(KciQuery(arti_nm=term, sere_id=sere_id, pubi_yr=year))
 
     if insi_ids:
         for insi_id in insi_ids:
             for term in base_terms:
-                queries.append(KciQuery(arti_nm=term, insi_id=insi_id))
+                for year in years:
+                    queries.append(KciQuery(arti_nm=term, insi_id=insi_id, pubi_yr=year))
 
     deduped: list[KciQuery] = []
-    seen: set[tuple[str, str | None, str | None]] = set()
+    seen: set[tuple[str, str | None, str | None, int | None]] = set()
     for query in queries:
-        key = (query.arti_nm.casefold(), query.sere_id, query.insi_id)
+        key = (query.arti_nm.casefold(), query.sere_id, query.insi_id, query.pubi_yr)
         if key in seen:
             continue
         seen.add(key)
@@ -117,7 +124,7 @@ def _to_scopus_proximity_term(term: str) -> str:
     words = term.split()
     if len(words) <= 1:
         return words[0] if words else ""
-    return " W/10 ".join(words)
+    return " W/16 ".join(words)
 
 
 def _build_title_abs_key_clause(terms: Iterable[str]) -> str:

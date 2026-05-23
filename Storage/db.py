@@ -19,7 +19,7 @@ class Base(DeclarativeBase):
 
 
 class PaperRecord(Base):
-    __tablename__ = "papers"
+    __tablename__ = "kci_papers"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     source: Mapped[str] = mapped_column(String(32), nullable=False)

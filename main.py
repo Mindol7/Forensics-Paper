@@ -14,7 +14,7 @@ from Core.normalizer import NormalizedPaper, normalize_kci_papers
 from Core.query_builder import build_kci_queries
 from Exporter.export_excl import export_papers_to_excel
 from Processor.filter import filter_digital_forensics_papers
-from Processor.scopus_pipeline import run_scopus_pipeline_yearly
+from Processor.scopus_pipeline import load_keyword_filter_terms, run_scopus_pipeline_yearly
 from Processor.summarizer import summarize_papers
 from Storage.db import DatabaseManager
 from config import Settings, load_settings
@@ -67,13 +67,15 @@ def _collect_kci_papers(
     *,
     settings: Settings,
     extra_terms: list[str] | None,
+    keyword_terms: list[str] | None,
     max_pages: int | None,
     page_size: int | None,
 ) -> tuple[list[NormalizedPaper], int]:
     if not settings.kci_service_key:
         raise ValueError("KCI_SERVICE_KEY (or KCI_API_KEY) is not set")
 
-    queries = build_kci_queries(extra_terms=(list(settings.extra_query_terms) + (extra_terms or [])))
+    merged_terms = (extra_terms or []) + (keyword_terms or [])
+    queries = build_kci_queries(extra_terms=merged_terms)
     collector = KciCollector(
         service_key=settings.kci_service_key,
         base_url=settings.kci_base_url,
@@ -96,9 +98,11 @@ def _run_kci_pipeline(
     keep_irrelevant: bool,
 ) -> PipelineResult:
     _log("3", "KCI collect+normalize START")
+    keyword_terms = load_keyword_filter_terms(settings.kci_keyword_filter_keywords_path)
     normalized, raw_count = _collect_kci_papers(
         settings=settings,
         extra_terms=extra_terms,
+        keyword_terms=keyword_terms,
         max_pages=max_pages,
         page_size=page_size,
     )
