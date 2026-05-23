@@ -83,13 +83,13 @@ def _load_scopus_subject_code_allowlist(path: Path) -> set[str]:
     raise ValueError(f"SCOPUS_SUBJECT_CODE_ALLOWLIST_PATH must be a JSON array: {path}")
 
 
-def _load_scopus_search_keywords(path: Path) -> list[str]:
+def _load_search_keywords(path: Path) -> list[str]:
     if not path.exists():
         return []
     with path.open("r", encoding="utf-8") as file:
         payload = json.load(file)
     if not isinstance(payload, dict):
-        raise ValueError(f"SCOPUS_KEYWORD_FILTER_KEYWORDS_PATH must be a JSON object: {path}")
+        raise ValueError(f"Keyword filter file must be a JSON object: {path}")
 
     def _normalize_keywords(values: object) -> list[str]:
         if isinstance(values, dict):
@@ -116,6 +116,15 @@ def _load_scopus_search_keywords(path: Path) -> list[str]:
         return result
 
     return _normalize_keywords(payload.get("include_any"))
+
+
+def _load_scopus_search_keywords(path: Path) -> list[str]:
+    return _load_search_keywords(path)
+
+
+def load_keyword_filter_terms(path: Path) -> list[str]:
+    """Load include-any keyword terms used to build search queries."""
+    return _load_search_keywords(path)
 
 
 def _build_scopus_collector(
@@ -292,7 +301,7 @@ def run_scopus_pipeline_yearly(
 ) -> ScopusPipelineResult:
     scopus_collector = _build_scopus_collector(settings=settings, page_size=page_size)
     keyword_terms = _load_scopus_search_keywords(settings.scopus_keyword_filter_keywords_path)
-    query_terms = keyword_terms + list(settings.extra_query_terms) + (extra_terms or [])
+    query_terms = keyword_terms + (extra_terms or [])
     scopus_queries = build_scopus_queries(keyword_terms=query_terms)
     allowed_subject_codes = _load_scopus_subject_code_allowlist(settings.scopus_subject_code_allowlist_path)
     if allowed_subject_codes:
