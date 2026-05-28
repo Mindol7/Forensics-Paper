@@ -1,0 +1,417 @@
+version: 3
+normalize: true
+journals:
+  - name: "IEEE International Conference on Advanced Video and Signal-Based Surveillance, AVSS"
+    abbreviation: "AVSS"
+    publisher: "IEEE"
+    issn: null
+    e_issn: "2643-6213"
+    aliases: []
+    enabled: true
+
+  - name: "Proceedings of the ACM Conference on Computer and Communications Security"
+    abbreviation: "CCS"
+    publisher: "Association for Computing Machinery" # ACM
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "Conference on Human Factors in Computing Systems - Proceedings"
+    abbreviation: "CHI"
+    publisher: "Association for Computing Machinery" # ACM
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "International Conference on Information and Knowledge Management, Proceedings"
+    abbreviation: "CIKM"
+    publisher: "Association for Computing Machinery" # ACM
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "IEEE International Conference on Cloud Computing, CLOUD"
+    abbreviation: "CLOUD"
+    publisher: "IEEE"
+    issn: "2159-6182"
+    e_issn: "2159-6190"
+    aliases: []
+    enabled: true
+
+  - name: "Computer Law and Security Review"
+    abbreviation: "CLSR"
+    publisher: "Elsevier"
+    issn: "2212-473X"
+    e_issn: "2212-4748"
+    aliases: []
+    enabled: true
+
+  - name: "Computers and Security"
+    abbreviation: "COSE"
+    publisher: "Elsevier"
+    issn: "0167-4048"
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "Proceedings - IEEE Computer Security Foundations Symposium"
+    abbreviation: "CSF"
+    publisher: "IEEE"
+    issn: "1940-1434"
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "Expert Systems with Applications"
+    abbreviation: "ESWA"
+    publisher: "Elsevier"
+    issn: "0957-4174"
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "Future Generation Computer Systems"
+    abbreviation: "FGCS"
+    publisher: "Elsevier"
+    issn: "0167-739X"
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "Forensic Science International: Digital Investigation"
+    abbreviation: "FSIDI"
+    publisher: "Elsevier"
+    issn: "2666-2825"
+    e_issn: "2666-2817"
+    aliases: []
+    enabled: true
+
+  - name: "Proceedings - IEEE International Conference on Data Mining, ICDM"
+    abbreviation: "ICDM"
+    publisher: "IEEE"
+    issn: "1550-4786"
+    e_issn: "1550-4786"
+    aliases: []
+    enabled: true
+
+  - name: "Proceedings of the IEEE International Conference on Web Services, ICWS"
+    abbreviation: "ICWS"
+    publisher: "IEEE"
+    issn: "2836-3876"
+    e_issn: "2836-3868"
+    aliases: []
+    enabled: true
+
+  - name: "Information Sciences"
+    abbreviation: "INS"
+    publisher: "Elsevier"
+    issn: "0020-0255"
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "International Conference on Intelligent User Interfaces, Proceedings IUI"
+    abbreviation: "IUI"
+    publisher: "Association for Computing Machinery" # ACM
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "Journal of Forensic Sciences"
+    abbreviation: "JFS"
+    publisher: "John Wiley & Sons" # Wiley
+    issn: "0022-1198"
+    e_issn: "1556-4029"
+    aliases: []
+    enabled: true
+
+  - name: "Journal of Computer Virology and Hacking Techniques"
+    abbreviation: "JICV"
+    publisher: "Springer Nature" # Springer
+    issn: null
+    e_issn: "2263-8733"
+    aliases: []
+    enabled: true
+
+  - name: "IEEE Internet of Things Journal"
+    abbreviation: "JIOT"
+    publisher: "IEEE"
+    issn: null
+    e_issn: "2327-4662"
+    aliases: []
+    enabled: true
+
+  - name: "Journal of Information Security and Applications"
+    abbreviation: "JISA"
+    publisher: "Elsevier"
+    issn: "2214-2134"
+    e_issn: "2214-2126"
+    aliases: []
+    enabled: true
+
+  - name: "Journal of Network and Computer Applications"
+    abbreviation: "JNCA"
+    publisher: "Elsevier"
+    issn: "1084-8045"
+    e_issn: "1095-8592"
+    aliases: []
+    enabled: true
+
+  - name: "Journal of Systems and Software"
+    abbreviation: "JSS"
+    publisher: "Elsevier"
+    issn: "0164-1212"
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "Journal of Visual Communication and Image Representation"
+    abbreviation: "JVCI"
+    publisher: "Elsevier"
+    issn: "1047-3203"
+    e_issn: "1095-9076"
+    aliases: []
+    enabled: true
+
+  - name: "Proceedings of the ACM SIGKDD International Conference on Knowledge Discovery and Data Mining"
+    abbreviation: "KDD"
+    publisher: "Association for Computing Machinery" # ACM
+    issn: "2154-817X"
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "Multimedia Systems"
+    abbreviation: "MMS"
+    publisher: "Springer Nature" # Springer
+    issn: "0942-4962"
+    e_issn: "1432-1882"
+    aliases: []
+    enabled: true
+
+  - name: "Proceedings - IEEE Symposium on Security and Privacy"
+    abbreviation: "S&P"
+    publisher: "IEEE"
+    issn: "1081-6011"
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "IEEE Security and Privacy"
+    abbreviation: "IEEE"
+    publisher: ""
+    issn: "1540-7993"
+    e_issn: "1558-4046"
+    aliases: []
+    enabled: true
+
+  - name: "IEEE Transactions on Cloud Computing"
+    abbreviation: "TCC"
+    publisher: "IEEE"
+    issn: null
+    e_issn: "2168-7161"
+    aliases: []
+    enabled: true
+
+  - name: "Telematics and Informatics"
+    abbreviation: "TELE"
+    publisher: "Elsevier"
+    issn: "0736-5853"
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "IEEE Transactions on Emerging Topics in Computing"
+    abbreviation: "TETC"
+    publisher: "IEEE"
+    issn: null
+    e_issn: "2168-6750"
+    aliases: []
+    enabled: true
+
+  - name: "IEEE Transactions on Information Forensics and Security"
+    abbreviation: "TIFS"
+    publisher: "IEEE"
+    issn: "1556-6013"
+    e_issn: "1556-6021"
+    aliases: []
+    enabled: true
+
+  - name: "IEEE Transactions on Image Processing"
+    abbreviation: "TIP"
+    publisher: "IEEE"
+    issn: "1057-7149"
+    e_issn: "1941-0042"
+    aliases: []
+    enabled: true
+
+  - name: "IEEE Transactions on Intelligent Transportation Systems"
+    abbreviation: "TITS"
+    publisher: "IEEE"
+    issn: "1524-9050"
+    e_issn: "1558-0016"
+    aliases: []
+    enabled: true
+
+  - name: "International Conference on Availability, Reliability and Security"
+    abbreviation: "ARES"
+    publisher: ""
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "IEEE/ACM International Symposium on Cluster, Cloud, and Grid Computing"
+    abbreviation: "CCGrid"
+    publisher: "IEEE/ACM"
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "ACM Symposium on Information, Computer and Communications Security"
+    abbreviation: "ASIACCS"
+    publisher: "Association for Computing Machinery"
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "ACM International Conference on Multimedia Retrieval"
+    abbreviation: "ICMR"
+    publisher: "Association for Computing Machinery"
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "IEEE International Conference on Software Testing, Verification and Validation"
+    abbreviation: "ICST"
+    publisher: "IEEE"
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "ACM International Symposium on Software Testing and Analysis"
+    abbreviation: "ISSTA"
+    publisher: "Association for Computing Machinery"
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "International Conference on Principles of Knowledge Representation and Reasoning"
+    abbreviation: "KR"
+    publisher: ""
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "ACM Multimedia Conference"
+    abbreviation: "MM"
+    publisher: "Association for Computing Machinery"
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "Network and Distributed System Security Symposium"
+    abbreviation: "NDSS"
+    publisher: ""
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "Science & Justice"
+    abbreviation: "SJ"
+    publisher: ""
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "SIAM International Conference on Data Mining"
+    abbreviation: "SDM"
+    publisher: "SIAM"
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "USENIX Security Symposium"
+    abbreviation: "USENIX Security"
+    publisher: "USENIX"
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "ACM Symposium on Cloud Computing"
+    abbreviation: "SoCC"
+    publisher: "Association for Computing Machinery"
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "Symposium On Usable Privacy and Security"
+    abbreviation: "SOUPS"
+    publisher: ""
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "ACM Symposium on User Interface Software and Technology"
+    abbreviation: "UIST"
+    publisher: "Association for Computing Machinery"
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "IEEE Visualization"
+    abbreviation: "VIS"
+    publisher: "IEEE"
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "ACM International Conference on Web Search and Data Mining"
+    abbreviation: "WSDM"
+    publisher: "Association for Computing Machinery"
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+  - name: "International World Wide Web Conference"
+    abbreviation: "WWW"
+    publisher: ""
+    issn: null
+    e_issn: null
+    aliases: []
+    enabled: true
+
+# Optional tracking section (not used by runtime filter)
+candidates_not_found:
+  - "ACM Annual Computer Security Applications Conference"
+  - "International Conference on the Theory and Application of Cryptology and Information Security"
+  - "APWG Symposium on Electronic Crime Research"
+  - "European Symposium on Research in Computer Security"
+  - "Financial Cryptography and Data Security"
+  - "International Semantic Web Conference"
+  - "ACM Network and Operating System Support for Digital Audio and Video"
+  - "Pacific-Asia Conference on Knowledge Discovery and Data Mining"
+  - "International Symposium on Recent Advances in Intrusion Detection"
+  - "IFIP International Information Security and Privacy Conference"
+  - "ACM SIGIR Conference on Information Retrieval"
+  - "International Conference on Tools and Algorithms for Construction and Analysis of Systems"

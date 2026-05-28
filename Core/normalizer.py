@@ -49,6 +49,7 @@ class NormalizedPaper:
     updated_at: str | None = None
     publication_year: int | None = None
     matched_queries: list[str] = field(default_factory=list)
+    matched_keyword: list[str] = field(default_factory=list)
     relevance_score: float | None = None
     relevance_reasons: list[str] = field(default_factory=list)
     is_relevant: bool | None = None
@@ -205,7 +206,7 @@ def normalize_scopus_paper(raw_paper: ScopusRawPaper) -> NormalizedPaper:
 
     return NormalizedPaper(
         source="scopus",
-        source_id=raw_paper.scopus_id or raw_paper.doi or raw_paper.title or "unknown",
+        source_id=raw_paper.scopus_id or raw_paper.eid or raw_paper.doi or raw_paper.title or "unknown",
         title=raw_paper.title,
         title_kor=None,
         title_eng=raw_paper.title,

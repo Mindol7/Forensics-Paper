@@ -49,6 +49,7 @@ def _richness_score(paper: NormalizedPaper) -> int:
     score = sum(1 for field in fields if field)
     score += len(paper.keywords)
     score += len(paper.matched_queries)
+    score += len(paper.matched_keyword)
     return score
 
 # 높은 점수의 데이터 선택
@@ -97,6 +98,12 @@ def _merge_papers(base: NormalizedPaper, other: NormalizedPaper) -> NormalizedPa
         if query.casefold() not in seen_queries:
             base.matched_queries.append(query)
             seen_queries.add(query.casefold())
+
+    seen_matched_keywords = {keyword.casefold() for keyword in base.matched_keyword}
+    for keyword in other.matched_keyword:
+        if keyword.casefold() not in seen_matched_keywords:
+            base.matched_keyword.append(keyword)
+            seen_matched_keywords.add(keyword.casefold())
 
     seen_reasons = {reason.casefold() for reason in base.relevance_reasons}
     for reason in other.relevance_reasons:

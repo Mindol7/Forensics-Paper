@@ -17,6 +17,10 @@ class ScopusApiError(RuntimeError):
     """Raised when Scopus returns a non-success response."""
 
 
+class ScopusRateLimitError(ScopusApiError):
+    """Raised when Scopus keeps returning HTTP 429 after retries."""
+
+
 @dataclass
 class ScopusRawPaper:
     """Raw paper data returned by Scopus Search API."""
@@ -62,6 +66,8 @@ class ScopusAbstractDetail:
 class ScopusCollector:
     _rate_limit_lock = threading.Lock()
     _global_pause_until_monotonic = 0.0
+    _next_request_at_monotonic = 0.0
+    _exhausted_api_keys: set[str] = set()
     _abstract_field_aliases = (
         "url",
         "title",
@@ -78,16 +84,19 @@ class ScopusCollector:
 
     def __init__(
         self,
-        api_key: str,
+        api_key: str | None,
         *,
+        api_keys: tuple[str, ...] | None = None,
         api_root: str,
         timeout: int = 120,
         page_size: int = 25,
         session: requests.Session | None = None,
-        retry_count: int = 2,
+        retry_count: int = 5,
         retry_backoff_seconds: float = 1.0,
+        requests_per_second: float = 5.0,
     ) -> None:
-        self.api_key = api_key
+        self.api_keys = self._normalize_api_keys(api_key, api_keys)
+        self._api_key_index = 0
         self.api_root = api_root.rstrip("/")
         self.search_url = f"{self.api_root}/search/scopus"
         self.timeout = timeout
@@ -95,6 +104,23 @@ class ScopusCollector:
         self.session = session or requests.Session()
         self.retry_count = retry_count
         self.retry_backoff_seconds = retry_backoff_seconds
+        self.min_request_interval_seconds = 1.0 / requests_per_second if requests_per_second > 0 else 0.0
+
+    @staticmethod
+    def _normalize_api_keys(api_key: str | None, api_keys: tuple[str, ...] | None) -> tuple[str, ...]:
+        result: list[str] = []
+        seen: set[str] = set()
+        for candidate in (api_key, *(api_keys or ())):
+            if not candidate:
+                continue
+            key = candidate.strip()
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            result.append(key)
+        if not result:
+            raise ValueError("SCOPUS_API_KEY or SCOPUS_FALLBACK_API_KEYS is required")
+        return tuple(result)
 
     @classmethod
     def _wait_for_global_pause(cls) -> None:
@@ -113,6 +139,56 @@ class ScopusCollector:
             candidate = time.monotonic() + seconds
             if candidate > cls._global_pause_until_monotonic:
                 cls._global_pause_until_monotonic = candidate
+
+    @classmethod
+    def _wait_for_request_slot(cls, min_interval_seconds: float) -> None:
+        while True:
+            with cls._rate_limit_lock:
+                now = time.monotonic()
+                ready_at = max(cls._global_pause_until_monotonic, cls._next_request_at_monotonic)
+                wait_seconds = ready_at - now
+                if wait_seconds <= 0:
+                    cls._next_request_at_monotonic = now + max(0.0, min_interval_seconds)
+                    return
+            time.sleep(min(wait_seconds, 1.0))
+
+    @classmethod
+    def _mark_api_key_exhausted(cls, api_key: str) -> None:
+        with cls._rate_limit_lock:
+            cls._exhausted_api_keys.add(api_key)
+
+    @classmethod
+    def _is_api_key_exhausted(cls, api_key: str) -> bool:
+        with cls._rate_limit_lock:
+            return api_key in cls._exhausted_api_keys
+
+    def _current_api_key(self) -> str:
+        for offset in range(len(self.api_keys)):
+            index = (self._api_key_index + offset) % len(self.api_keys)
+            api_key = self.api_keys[index]
+            if not self._is_api_key_exhausted(api_key):
+                self._api_key_index = index
+                return api_key
+        return self.api_keys[self._api_key_index]
+
+    def _advance_api_key(self, exhausted_api_key: str) -> bool:
+        self._mark_api_key_exhausted(exhausted_api_key)
+        for offset in range(1, len(self.api_keys) + 1):
+            index = (self._api_key_index + offset) % len(self.api_keys)
+            api_key = self.api_keys[index]
+            if not self._is_api_key_exhausted(api_key):
+                self._api_key_index = index
+                return True
+        return False
+
+    @staticmethod
+    def _is_quota_exceeded_response(response: requests.Response) -> bool:
+        return (
+            response.status_code == 429
+            and not response.headers.get("Retry-After")
+            and not response.headers.get("X-RateLimit-Limit")
+            and not response.headers.get("X-RateLimit-Remaining")
+        )
 
     @staticmethod
     def _parse_retry_after_seconds(response: requests.Response) -> float | None:
@@ -151,14 +227,16 @@ class ScopusCollector:
         params: dict[str, Any],
         expected_root_key: str,
     ) -> dict[str, Any]:
-        headers = {
-            "X-ELS-APIKey": self.api_key,
-            "Accept": "application/json",
-        }
         last_error: Exception | None = None
+        attempt = 0
 
-        for attempt in range(self.retry_count + 1):
-            self._wait_for_global_pause()
+        while attempt <= self.retry_count:
+            self._wait_for_request_slot(self.min_request_interval_seconds)
+            api_key = self._current_api_key()
+            headers = {
+                "X-ELS-APIKey": api_key,
+                "Accept": "application/json",
+            }
             response: requests.Response | None = None
             try:
                 response = self.session.get(
@@ -168,14 +246,20 @@ class ScopusCollector:
                     timeout=self.timeout,
                 )
                 if response.status_code == 429:
-                    delay = self._compute_retry_delay(attempt=attempt, response=response)
-                    self._extend_global_pause(delay)
-                    last_error = ScopusApiError(
+                    last_error = ScopusRateLimitError(
                         f"Scopus rate-limited request (429): url={url} retry_after={response.headers.get('Retry-After')}"
                     )
+                    if self._is_quota_exceeded_response(response):
+                        if self._advance_api_key(api_key):
+                            attempt = 0
+                            continue
+                        break
+                    delay = self._compute_retry_delay(attempt=attempt, response=response)
+                    self._extend_global_pause(delay)
                     if attempt >= self.retry_count:
                         break
                     time.sleep(delay)
+                    attempt += 1
                     continue
 
                 response.raise_for_status()
@@ -191,7 +275,10 @@ class ScopusCollector:
                 if response is not None and response.status_code in (429, 503):
                     self._extend_global_pause(delay)
                 time.sleep(delay)
+                attempt += 1
 
+        if isinstance(last_error, ScopusRateLimitError):
+            raise ScopusRateLimitError(f"Failed to fetch Scopus data: {last_error}")
         raise ScopusApiError(f"Failed to fetch Scopus data: {last_error}")
 
     def collect(
@@ -201,25 +288,29 @@ class ScopusCollector:
         max_pages: int | None = None,
         start_offset: int = 0,
     ) -> list[ScopusRawPaper]:
-        page_no = 1
-        start = max(0, start_offset)
+        _ = start_offset
+        pages_fetched = 0
+        cursor = "*"
         papers: list[ScopusRawPaper] = []
 
         while True:
-            payload = self._request_page(query=query, start=start)
+            payload = self._request_page(query=query, cursor=cursor)
             page_items, total_count = self._parse_items(payload, matched_query=query.query)
+            pages_fetched += 1
 
             if not page_items:
                 break
 
             papers.extend(page_items)
-            if len(papers) >= total_count:
+            next_cursor = self._extract_next_cursor(payload)
+            if not next_cursor or next_cursor == cursor:
                 break
 
-            page_no += 1
-            if max_pages is not None and page_no > max_pages:
+            if max_pages is not None and pages_fetched >= max_pages:
                 break
-            start += self.page_size
+            if len(papers) >= total_count:
+                break
+            cursor = next_cursor
 
         return papers
 
@@ -230,7 +321,6 @@ class ScopusCollector:
         max_pages: int | None = None,
         start_offset: int = 0,
         existing_source_ids: set[str] | None = None,
-        overlap_count: int = 20,
         exclude_erratum: bool = True,
     ) -> list[ScopusRawPaper]:
         aggregated: list[ScopusRawPaper] = []
@@ -244,7 +334,6 @@ class ScopusCollector:
                     start_offset=start_offset,
                     existing_source_ids=known_source_ids,
                     run_seen_source_ids=seen_source_ids,
-                    overlap_count=overlap_count,
                     exclude_erratum=exclude_erratum,
                 )
             )
@@ -258,23 +347,22 @@ class ScopusCollector:
         start_offset: int,
         existing_source_ids: set[str],
         run_seen_source_ids: set[str],
-        overlap_count: int,
         exclude_erratum: bool,
     ) -> list[ScopusRawPaper]:
-        page_no = 1
-        start = max(0, start_offset)
+        _ = start_offset
+        pages_fetched = 0
+        cursor = "*"
         papers: list[ScopusRawPaper] = []
-        effective_overlap = max(0, min(overlap_count, self.page_size - 1))
-        step = max(1, self.page_size - effective_overlap)
 
         while True:
-            payload = self._request_page(query=query, start=start)
+            payload = self._request_page(query=query, cursor=cursor)
             page_items, total_count = self._parse_items(payload, matched_query=query.query)
+            pages_fetched += 1
             if not page_items:
                 break
 
             for paper in page_items:
-                source_id = paper.scopus_id
+                source_id = paper.scopus_id or paper.eid or paper.doi
                 is_erratum = (paper.subtype_description or "").casefold() == "erratum"
 
                 if exclude_erratum and is_erratum:
@@ -290,24 +378,54 @@ class ScopusCollector:
                 if source_id:
                     run_seen_source_ids.add(source_id)
 
-            if len(papers) >= total_count:
+            next_cursor = self._extract_next_cursor(payload)
+            if not next_cursor or next_cursor == cursor:
                 break
 
-            page_no += 1
-            if max_pages is not None and page_no > max_pages:
+            if max_pages is not None and pages_fetched >= max_pages:
                 break
-            start += step
+            if len(papers) >= total_count:
+                break
+            cursor = next_cursor
 
         return papers
 
-    def _request_page(self, query: ScopusQuery, *, start: int) -> dict[str, Any]:
+    @staticmethod
+    def _extract_next_cursor(payload: dict[str, Any]) -> str | None:
+        search_results = payload.get("search-results", {})
+        cursor = search_results.get("cursor") if isinstance(search_results, dict) else None
+        if isinstance(cursor, dict):
+            next_cursor = cursor.get("@next")
+            if isinstance(next_cursor, str) and next_cursor:
+                return next_cursor
+        links = search_results.get("link") if isinstance(search_results, dict) else None
+        if isinstance(links, list):
+            for link in links:
+                if not isinstance(link, dict) or link.get("@ref") != "next":
+                    continue
+                href = link.get("@href")
+                if not isinstance(href, str):
+                    continue
+                marker = "cursor="
+                if marker not in href:
+                    continue
+                return href.split(marker, 1)[1].split("&", 1)[0]
+        return None
+
+    def _request_page(self, query: ScopusQuery, *, cursor: str) -> dict[str, Any]:
         params: dict[str, Any] = {
             "query": query.query,
-            "start": start,
+            "cursor": cursor,
             "count": self.page_size,
         }
         if query.view:
             params["view"] = query.view
+        if query.sort:
+            params["sort"] = query.sort
+        if query.date:
+            params["date"] = query.date
+        if query.subj:
+            params["subj"] = query.subj
 
         return self._request_json_with_retries(
             url=self.search_url,
@@ -390,6 +508,8 @@ class ScopusCollector:
             try:
                 payload = self._request_abstract(identifier_type=id_type, identifier=id_value)
                 return self._parse_abstract_detail(payload)
+            except ScopusRateLimitError as exc:
+                raise exc
             except (requests.RequestException, ValueError, ScopusApiError) as exc:
                 last_error = exc
         if last_error:

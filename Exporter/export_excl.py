@@ -14,6 +14,7 @@ from Core.normalizer import NormalizedPaper
 def _flatten_paper(paper: NormalizedPaper) -> dict[str, object]:
     payload = asdict(paper)
     payload["keywords"] = "; ".join(paper.keywords)
+    payload["matched_keyword"] = "; ".join(paper.matched_keyword)
     payload["authors"] = "; ".join(paper.authors)
     payload["matched_queries"] = "; ".join(paper.matched_queries)
     payload["relevance_reasons"] = "; ".join(paper.relevance_reasons)

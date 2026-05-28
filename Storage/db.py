@@ -72,17 +72,11 @@ class ScopusPaperRecord(Base):
     source: Mapped[str] = mapped_column(String(32), nullable=False, default="scopus")
     source_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
     title: Mapped[str | None] = mapped_column(Text, nullable=True)
-    title_kor: Mapped[str | None] = mapped_column(Text, nullable=True)
-    title_eng: Mapped[str | None] = mapped_column(Text, nullable=True)
-    title_other: Mapped[str | None] = mapped_column(Text, nullable=True)
     doi: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
-    uci: Mapped[str | None] = mapped_column(String(255), nullable=True)
     url: Mapped[str | None] = mapped_column(Text, nullable=True)
     abstract: Mapped[str | None] = mapped_column(Text, nullable=True)
-    abstract_kor: Mapped[str | None] = mapped_column(Text, nullable=True)
-    abstract_eng: Mapped[str | None] = mapped_column(Text, nullable=True)
-    abstract_other: Mapped[str | None] = mapped_column(Text, nullable=True)
     keywords_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    matched_keyword: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     authors_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     journal_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     institution_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -102,12 +96,48 @@ class ScopusPaperRecord(Base):
 
 
 class DatabaseManager:
+    _deprecated_scopus_columns = (
+        "title_kor",
+        "title_eng",
+        "title_other",
+        "uci",
+        "abstract_kor",
+        "abstract_eng",
+        "abstract_other",
+    )
+
     def __init__(self, database_url: str) -> None:
         self.engine = create_engine(database_url, future=True)
         self.session_factory = sessionmaker(bind=self.engine, expire_on_commit=False, future=True)
 
     def create_tables(self) -> None:
         Base.metadata.create_all(self.engine)
+        self._ensure_scopus_schema()
+
+    def _ensure_scopus_schema(self) -> None:
+        dialect = self.engine.dialect.name
+        with self.engine.begin() as connection:
+            if dialect == "sqlite":
+                columns = {
+                    row[1]
+                    for row in connection.exec_driver_sql("PRAGMA table_info(scopus_papers)").fetchall()
+                }
+                if columns and "matched_keyword" not in columns:
+                    connection.exec_driver_sql(
+                        "ALTER TABLE scopus_papers ADD COLUMN matched_keyword TEXT NOT NULL DEFAULT '[]'"
+                    )
+                for column in self._deprecated_scopus_columns:
+                    if column in columns:
+                        connection.exec_driver_sql(f"ALTER TABLE scopus_papers DROP COLUMN {column}")
+                return
+
+            if dialect == "postgresql":
+                connection.exec_driver_sql(
+                    "ALTER TABLE scopus_papers "
+                    "ADD COLUMN IF NOT EXISTS matched_keyword TEXT NOT NULL DEFAULT '[]'"
+                )
+                for column in self._deprecated_scopus_columns:
+                    connection.exec_driver_sql(f"ALTER TABLE scopus_papers DROP COLUMN IF EXISTS {column}")
 
     def get_state(self, key: str) -> str | None:
         with self.session_factory() as session:
@@ -223,17 +253,11 @@ class DatabaseManager:
     def _apply_scopus_paper(record: ScopusPaperRecord, paper: NormalizedPaper) -> None:
         record.source = "scopus"
         record.title = paper.title
-        record.title_kor = paper.title_kor
-        record.title_eng = paper.title_eng
-        record.title_other = paper.title_other
         record.doi = paper.doi
-        record.uci = paper.uci
         record.url = paper.url
         record.abstract = paper.abstract
-        record.abstract_kor = paper.abstract_kor
-        record.abstract_eng = paper.abstract_eng
-        record.abstract_other = paper.abstract_other
         record.keywords_json = json.dumps(paper.keywords, ensure_ascii=False)
+        record.matched_keyword = json.dumps(paper.matched_keyword, ensure_ascii=False)
         record.authors_json = json.dumps(paper.authors, ensure_ascii=False)
         record.journal_id = paper.journal_id
         record.institution_id = paper.institution_id

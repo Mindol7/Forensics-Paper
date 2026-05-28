@@ -1,0 +1,333 @@
+{
+  "Digital forensics": {
+    "Digital evidence identification, triage, and preservation": {
+      "Identification of potential sources of digital evidence": {
+        "Digital device identification": {
+          "anchored": [
+            "device"
+          ],
+          "direct": [
+            "android",
+            "mobile",
+            "forensic information identification"
+          ]
+        }
+      },
+      "Digital evidence triage": {
+        "Logical forensic data prioritization": {
+          "direct": [
+            "device prioritisation",
+            "device prioritization",
+            "encrypted data containers"
+          ]
+        }
+      },
+      "Digital evidence preservation": {
+        "Evidence integrity verification": {
+          "anchored_digital_forensic": [
+            "evidence"
+          ],
+          "direct": [
+            "evidence from hacking"
+          ]
+        },
+        "Forensic image format": {
+          "anchored_digital_forensic": [
+            "image"
+          ]
+        }
+      }
+    },
+    "Digital evidence collection, examination, and analysis": {
+      "Device forensics": {
+        "Device data acquisition": {
+          "direct": [
+            "smartphone"
+          ]
+        }
+      },
+      "File system and operating system forensics": {
+        "File system analysis": {
+          "anchored": [
+            "file"
+          ],
+          "direct": [
+            "ntfs",
+            "logfile"
+          ]
+        },
+        "Operating system artifact analysis": {
+          "anchored": [
+            "artifact"
+          ]
+        },
+        "OS-level memory analysis": {
+          "anchored": [
+            "memory"
+          ]
+        }
+      },
+      "Application and file forensics": {
+        "Application artifact analysis": {
+          "anchored_digital_forensic": [
+            "database"
+          ]
+        },
+        "File format analysis": {
+          "direct": [
+            "ssdeep",
+            "ssdeeper",
+            "similarity hashing",
+            "approximate matching"
+          ]
+        }
+      },
+      "Network and cloud forensics": {
+        "Network packet analysis": {
+          "anchored": [
+            "network"
+          ],
+          "direct": [
+            "network traffic",
+            "ssh",
+            "syslog"
+          ]
+        },
+        "OSINT (Open Source Intelligence) collection and utilization": {
+          "direct": [
+            "open-source investigative tools",
+            "open source investigative tools",
+            "ecstasy user reports"
+          ]
+        },
+        "Anonymous networks and dark web analysis": {
+          "direct": [
+            "dark web",
+            "darknet",
+            "anonymity network"
+          ]
+        },
+        "Cloud-based service data acquisition": {
+          "anchored": [
+            "cloud"
+          ]
+        }
+      }
+    },
+    "Common foundational technologies": {
+      "Anti-forensic countermeasures": {
+        "Decryption": {
+          "direct": [
+            "password cracking",
+            "encrypted data containers"
+          ]
+        },
+        "Deleted/damaged data recovery": {
+          "direct": [
+            "audio recovery",
+            "chip off acquisition"
+          ]
+        },
+        "Tampering detection": {
+          "direct": [
+            "tampering",
+            "copy-move"
+          ]
+        }
+      },
+      "Forensic infrastructure": {
+        "Reference data sets": {
+          "anchored_digital_forensic": [
+            "dataset"
+          ]
+        },
+        "Forensic tool validation": {
+          "anchored_digital_forensic": [
+            "tool",
+            "validation"
+          ],
+          "direct": [
+            "practitioner survey",
+            "black-box forensic tools",
+            "decision support framework"
+          ]
+        }
+      }
+    },
+    "Converged forensics": {
+      "Incident response": {
+        "Event monitoring, logging, and analysis": {
+          "anchored": [
+            "incident"
+          ],
+          "direct": [
+            "iot incident response",
+            "anomaly detection"
+          ]
+        },
+        "Malware analysis and mitigation": {
+          "direct": [
+            "malware",
+            "botnet",
+            "iot botnet",
+            "stalkerware"
+          ]
+        },
+        "Personal data breach investigation": {
+          "anchored": [
+            "privacy"
+          ],
+          "direct": [
+            "coercive control"
+          ]
+        }
+      },
+      "Multimedia forensics": {
+        "Media source analysis": {
+          "direct": [
+            "license plate",
+            "surveillance video",
+            "face image",
+            "identity documents"
+          ]
+        },
+        "Media tampering detection and integrity verification": {
+          "direct": [
+            "deepfake",
+            "yolo"
+          ]
+        },
+        "Multimodal content analysis": {
+          "direct": [
+            "csam",
+            "child sexual abuse imagery",
+            "pornographic content"
+          ]
+        }
+      },
+      "Cryptocurrency forensics (Blockchain, Virtual asset)": {
+        "On-chain transaction tracing": {
+          "direct": [
+            "blockchain",
+            "cryptocurrency",
+            "decentralized finance"
+          ]
+        },
+        "Off-chain transaction tracing": {
+          "direct": [
+            "money laundering",
+            "crypto wallet"
+          ]
+        }
+      },
+      "Industry / domain-specific forensics": {
+        "Mobility(drones, vehicles, and maritime systems) forensics": {
+          "direct": [
+            "drone"
+          ]
+        }
+      },
+      "AI(Artificial Intelligence) forensics": {
+        "AI-driven forensic analysis automation": {
+          "anchored_digital_forensic": [
+            "learning"
+          ],
+          "direct": [
+            "language model",
+            "large language model",
+            "chain of thought"
+          ]
+        }
+      }
+    }
+  },
+  "search_config": {
+    "anchor_modes": {
+      "anchored": [
+        "forensic",
+        "forensics"
+      ],
+      "anchored_digital_forensic": [
+        "digital forensic",
+        "digital forensics"
+      ]
+    },
+    "mode_notes": {
+      "direct": "Search the listed terms directly in TITLE-ABS-KEY.",
+      "anchored": "Search taxonomy terms together with the configured forensic/forensics anchor terms.",
+      "anchored_digital_forensic": "Search high-noise taxonomy terms together with the stricter digital forensic(s) anchor terms."
+    }
+  },
+  "exclude": [
+    "allele",
+    "short tandem repeat",
+    "str profiling",
+    "snp",
+    "autosomal",
+    "y-str",
+    "genotyping",
+    "microhaplotypes",
+    "kinship",
+    "ancestry inference",
+    "assay",
+    "multiplex",
+    "panel",
+    "developmental validation",
+    "spectroscopy",
+    "mass spectrometry",
+    "body fluid",
+    "bloodstain",
+    "skeletal",
+    "human remains",
+    "cadaver",
+    "microbiome",
+    "toxicology",
+    "toxicological",
+    "injury",
+    "odontology",
+    "computed tomography",
+    "wildlife",
+    "fingermarks",
+    "mitochondrial",
+    "trauma",
+    "sexual assault",
+    "species identification",
+    "cartridge",
+    "gunshot",
+    "soft tissue",
+    "latent fingermarks",
+    "sex estimation",
+    "footwear",
+    "superimposition",
+    "pcr",
+    "nucleic acid",
+    "dna recovery",
+    "dna transfer",
+    "dna methylation",
+    "trace dna",
+    "touch dna",
+    "dna profiling",
+    "pathology",
+    "acid",
+    "postmortem interval",
+    "fibre",
+    "fibres",
+    "swabs",
+    "level propositions",
+    "glass",
+    "methylation",
+    "textiles",
+    "saliva",
+    "soil",
+    "cardiac",
+    "given activity",
+    "microbial",
+    "voice comparison",
+    "drowning",
+    "score-based likelihood ratios",
+    "epigenetic",
+    "fire debris",
+    "nanopore",
+    "shoeprints"
+  ]
+}

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterable
+from typing import Iterable, Mapping
 
 
 @dataclass(frozen=True)
@@ -33,6 +33,17 @@ class ScopusQuery:
     query: str
     view: str | None = None
     sort: str | None = None
+    date: str | None = None
+    subj: str | None = None
+
+
+@dataclass(frozen=True)
+class ScopusKeywordSpec:
+    """Structured Scopus keyword query configuration."""
+
+    mode_terms: Mapping[str, tuple[str, ...]]
+    anchor_modes: Mapping[str, tuple[str, ...]]
+    exclude_terms: tuple[str, ...] = ()
 
 # 기본 검색 키워드: 추후 확장 가능
 DEFAULT_KCI_TITLE_TERMS: tuple[str, ...] = (
@@ -106,29 +117,28 @@ def build_kci_queries(
 
 
 SCOPUS_INCLUDE_SUBJECTS: tuple[str, ...] = ("COMP", "SOCI", "DECI", "MULT", "ENGI", "PSYC")
+SCOPUS_EXCLUDE_SUBJECTS: tuple[str, ...] = ("AGRI", "ENVI")
+SCOPUS_INCLUDE_DOCTYPES: tuple[str, ...] = ("ar", "re", "cp", "sh", "dp")
 
 
 def get_scopus_target_years(*, current_year: int | None = None) -> tuple[int, ...]:
     year = current_year if current_year is not None else datetime.now().year
-    start_year = year - 5
+    start_year = 2022
     end_year = year + 1
     return tuple(range(start_year, end_year + 1))
 
 
 def _build_scopus_base_query_for_year(year: int) -> str:
-    include_subjects = " or ".join(SCOPUS_INCLUDE_SUBJECTS)
-    return f"PUBYEAR = {year} AND SUBJAREA({include_subjects})"
+    doctype_clause = " OR ".join(f"DOCTYPE({doctype})" for doctype in SCOPUS_INCLUDE_DOCTYPES)
+    return f"({doctype_clause})"
 
 
-def _to_scopus_proximity_term(term: str) -> str:
-    words = term.split()
-    if len(words) <= 1:
-        return words[0] if words else ""
-    return " W/16 ".join(words)
+def _build_scopus_exclude_subject_clause() -> str:
+    return " ".join(f"AND NOT SUBJAREA({subject})" for subject in SCOPUS_EXCLUDE_SUBJECTS)
 
 
-def _build_title_abs_key_clause(terms: Iterable[str]) -> str:
-    normalized_terms: list[str] = []
+def _dedupe_terms(terms: Iterable[str]) -> list[str]:
+    result: list[str] = []
     seen: set[str] = set()
     for term in terms:
         normalized = _normalize_term(term)
@@ -138,41 +148,107 @@ def _build_title_abs_key_clause(terms: Iterable[str]) -> str:
         if key in seen:
             continue
         seen.add(key)
-        normalized_terms.append(normalized)
+        result.append(normalized)
+    return result
 
+
+def _format_scopus_keyword_term(term: str) -> str:
+    normalized = _normalize_term(term)
+    if any(char.isspace() for char in normalized) or "-" in normalized:
+        escaped = normalized.replace('"', '\\"')
+        return f'"{escaped}"'
+    return normalized
+
+
+def _join_keyword_terms(terms: Iterable[str]) -> str:
     segments: list[str] = []
-    for term in normalized_terms:
-        proximity_term = _to_scopus_proximity_term(term)
-        if not proximity_term:
+    for term in _dedupe_terms(terms):
+        formatted = _format_scopus_keyword_term(term)
+        if not formatted:
             continue
-        segments.append(f"({proximity_term})")
-
-    if not segments:
-        return ""
+        segments.append(formatted)
     return " OR ".join(segments)
+
+
+def _build_scopus_positive_keyword_clause(keyword_spec: ScopusKeywordSpec) -> str:
+    positive_clauses: list[str] = []
+
+    direct_terms = keyword_spec.mode_terms.get("direct", ())
+    direct_clause = _join_keyword_terms(direct_terms)
+    if direct_clause:
+        positive_clauses.append(f"TITLE-ABS-KEY({direct_clause})")
+
+    for mode, anchors in keyword_spec.anchor_modes.items():
+        term_clause = _join_keyword_terms(keyword_spec.mode_terms.get(mode, ()))
+        anchor_clause = _join_keyword_terms(anchors)
+        if not term_clause or not anchor_clause:
+            continue
+        positive_clauses.append(f"TITLE-ABS-KEY(({term_clause}) AND ({anchor_clause}))")
+
+    if not positive_clauses:
+        return ""
+
+    return f"({' OR '.join(positive_clauses)})"
+
+
+def _build_scopus_exclude_keyword_clause(keyword_spec: ScopusKeywordSpec) -> str:
+    exclude_clause = _join_keyword_terms(keyword_spec.exclude_terms)
+    if exclude_clause:
+        return f"AND NOT (TITLE-ABS-KEY({exclude_clause}))"
+    return ""
+
+
+def _keyword_spec_from_flat_terms(keyword_terms: Iterable[str] | None) -> ScopusKeywordSpec:
+    return ScopusKeywordSpec(
+        mode_terms={"direct": tuple(_dedupe_terms(keyword_terms or ()))},
+        anchor_modes={},
+        exclude_terms=(),
+    )
 
 
 def build_scopus_queries(
     keyword_terms: Iterable[str] | None = None,
     *,
+    keyword_spec: ScopusKeywordSpec | None = None,
+    source_clauses: Iterable[str] | None = None,
     target_years: Iterable[int] | None = None,
 ) -> list[ScopusQuery]:
     """Create Scopus query objects for each target year."""
     queries: list[ScopusQuery] = []
     years = tuple(target_years) if target_years is not None else get_scopus_target_years()
-    title_abs_key_clause = _build_title_abs_key_clause(keyword_terms or [])
+    effective_keyword_spec = keyword_spec or _keyword_spec_from_flat_terms(keyword_terms)
+    keyword_clause = _build_scopus_positive_keyword_clause(effective_keyword_spec)
+    exclude_keyword_clause = _build_scopus_exclude_keyword_clause(effective_keyword_spec)
+    source_clause_values = tuple(source_clauses or ())
+    if not source_clause_values:
+        source_clause_values = ("",)
+    subj = ",".join(SCOPUS_INCLUDE_SUBJECTS)
 
     for year in years:
         base_query = _build_scopus_base_query_for_year(year)
-        if title_abs_key_clause:
-            queries.append(ScopusQuery(query=f"TITLE-ABS-KEY({title_abs_key_clause}) AND {base_query}"))
-        else:
-            queries.append(ScopusQuery(query=base_query))
+        exclude_subject_clause = _build_scopus_exclude_subject_clause()
+        common_tail = " ".join(part for part in (exclude_keyword_clause, exclude_subject_clause) if part)
+        for source_clause in source_clause_values:
+            positive_parts = [base_query]
+            if keyword_clause:
+                positive_parts.append(keyword_clause)
+            if source_clause:
+                positive_parts.append(source_clause)
+            query_text = " AND ".join(positive_parts)
+            if common_tail:
+                query_text = f"{query_text} {common_tail}"
+            queries.append(ScopusQuery(query=query_text, date=str(year), subj=subj))
 
     deduped: list[ScopusQuery] = []
-    seen: set[str] = set()
+    seen: set[tuple[str, str | None, str | None, str | None, str | None]] = set()
     for query in queries:
-        key = query.query.casefold()
+        key = (
+            query.query.casefold(),
+            query.view,
+            query.sort,
+            query.date,
+            query.subj,
+        )
         if key in seen:
             continue
         seen.add(key)

@@ -178,6 +178,7 @@ def run_pipeline(
     page_size: int | None = None,
     force_full: bool = False,
     skip_export: bool = False,
+    skip_abstract: bool = False,
     keep_irrelevant: bool = False,
 ) -> PipelineResult:
     _log("0", "Pipeline START")
@@ -213,6 +214,7 @@ def run_pipeline(
             page_size=page_size,
             force_full=force_full,
             skip_export=skip_export,
+            skip_abstract=skip_abstract,
             log=_log,
         )
         return PipelineResult(
@@ -243,6 +245,7 @@ def run_pipeline(
         page_size=page_size,
         force_full=force_full,
         skip_export=skip_export,
+        skip_abstract=skip_abstract,
         log=_log,
     )
     return PipelineResult(
@@ -269,6 +272,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--page-size", type=int, default=None, help="Items per page request.")
     parser.add_argument("--force-full", action="store_true", help="Ignore stored incremental state.")
     parser.add_argument("--skip-export", action="store_true", help="Skip Excel export.")
+    parser.add_argument("--skip-abstract", action="store_true", help="Scopus only: skip abstract retrieval and store search results directly.")
     parser.add_argument("--keep-irrelevant", action="store_true", help="KCI only: keep low-scoring papers too.")
     return parser
 
@@ -283,6 +287,7 @@ def main() -> int:
         page_size=args.page_size,
         force_full=args.force_full,
         skip_export=args.skip_export,
+        skip_abstract=args.skip_abstract,
         keep_irrelevant=args.keep_irrelevant,
     )
     return 0
