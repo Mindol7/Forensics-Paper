@@ -8,6 +8,7 @@ journals:
     e_issn: "2643-6213"
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "Proceedings of the ACM Conference on Computer and Communications Security"
     abbreviation: "CCS"
@@ -16,6 +17,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "Conference on Human Factors in Computing Systems - Proceedings"
     abbreviation: "CHI"
@@ -24,6 +26,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 1
 
   - name: "International Conference on Information and Knowledge Management, Proceedings"
     abbreviation: "CIKM"
@@ -32,6 +35,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 1
 
   - name: "IEEE International Conference on Cloud Computing, CLOUD"
     abbreviation: "CLOUD"
@@ -40,6 +44,7 @@ journals:
     e_issn: "2159-6190"
     aliases: []
     enabled: true
+    chunk_group: 1
 
   - name: "Computer Law and Security Review"
     abbreviation: "CLSR"
@@ -48,6 +53,7 @@ journals:
     e_issn: "2212-4748"
     aliases: []
     enabled: true
+    chunk_group: 1
 
   - name: "Computers and Security"
     abbreviation: "COSE"
@@ -56,6 +62,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "Proceedings - IEEE Computer Security Foundations Symposium"
     abbreviation: "CSF"
@@ -64,6 +71,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 1
 
   - name: "Expert Systems with Applications"
     abbreviation: "ESWA"
@@ -72,6 +80,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "Future Generation Computer Systems"
     abbreviation: "FGCS"
@@ -80,6 +89,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "Forensic Science International: Digital Investigation"
     abbreviation: "FSIDI"
@@ -88,6 +98,7 @@ journals:
     e_issn: "2666-2817"
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "Proceedings - IEEE International Conference on Data Mining, ICDM"
     abbreviation: "ICDM"
@@ -96,6 +107,7 @@ journals:
     e_issn: "1550-4786"
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "Proceedings of the IEEE International Conference on Web Services, ICWS"
     abbreviation: "ICWS"
@@ -104,6 +116,7 @@ journals:
     e_issn: "2836-3868"
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "Information Sciences"
     abbreviation: "INS"
@@ -112,6 +125,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 1
 
   - name: "International Conference on Intelligent User Interfaces, Proceedings IUI"
     abbreviation: "IUI"
@@ -120,6 +134,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 1
 
   - name: "Journal of Forensic Sciences"
     abbreviation: "JFS"
@@ -128,6 +143,7 @@ journals:
     e_issn: "1556-4029"
     aliases: []
     enabled: true
+    chunk_group: 1
 
   - name: "Journal of Computer Virology and Hacking Techniques"
     abbreviation: "JICV"
@@ -136,6 +152,7 @@ journals:
     e_issn: "2263-8733"
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "IEEE Internet of Things Journal"
     abbreviation: "JIOT"
@@ -144,6 +161,7 @@ journals:
     e_issn: "2327-4662"
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "Journal of Information Security and Applications"
     abbreviation: "JISA"
@@ -152,6 +170,7 @@ journals:
     e_issn: "2214-2126"
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "Journal of Network and Computer Applications"
     abbreviation: "JNCA"
@@ -160,6 +179,7 @@ journals:
     e_issn: "1095-8592"
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "Journal of Systems and Software"
     abbreviation: "JSS"
@@ -168,6 +188,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 1
 
   - name: "Journal of Visual Communication and Image Representation"
     abbreviation: "JVCI"
@@ -176,6 +197,7 @@ journals:
     e_issn: "1095-9076"
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "Proceedings of the ACM SIGKDD International Conference on Knowledge Discovery and Data Mining"
     abbreviation: "KDD"
@@ -184,6 +206,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "Multimedia Systems"
     abbreviation: "MMS"
@@ -192,6 +215,7 @@ journals:
     e_issn: "1432-1882"
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "Proceedings - IEEE Symposium on Security and Privacy"
     abbreviation: "S&P"
@@ -200,6 +224,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "IEEE Security and Privacy"
     abbreviation: "IEEE"
@@ -208,6 +233,7 @@ journals:
     e_issn: "1558-4046"
     aliases: []
     enabled: true
+    chunk_group: 1
 
   - name: "IEEE Transactions on Cloud Computing"
     abbreviation: "TCC"
@@ -216,6 +242,7 @@ journals:
     e_issn: "2168-7161"
     aliases: []
     enabled: true
+    chunk_group: 1
 
   - name: "Telematics and Informatics"
     abbreviation: "TELE"
@@ -224,6 +251,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 1
 
   - name: "IEEE Transactions on Emerging Topics in Computing"
     abbreviation: "TETC"
@@ -232,6 +260,7 @@ journals:
     e_issn: "2168-6750"
     aliases: []
     enabled: true
+    chunk_group: 1
 
   - name: "IEEE Transactions on Information Forensics and Security"
     abbreviation: "TIFS"
@@ -240,6 +269,7 @@ journals:
     e_issn: "1556-6021"
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "IEEE Transactions on Image Processing"
     abbreviation: "TIP"
@@ -248,6 +278,7 @@ journals:
     e_issn: "1941-0042"
     aliases: []
     enabled: true
+    chunk_group: 1
 
   - name: "IEEE Transactions on Intelligent Transportation Systems"
     abbreviation: "TITS"
@@ -256,6 +287,7 @@ journals:
     e_issn: "1558-0016"
     aliases: []
     enabled: true
+    chunk_group: 1
 
   - name: "International Conference on Availability, Reliability and Security"
     abbreviation: "ARES"
@@ -264,6 +296,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "IEEE/ACM International Symposium on Cluster, Cloud, and Grid Computing"
     abbreviation: "CCGrid"
@@ -272,6 +305,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "ACM Symposium on Information, Computer and Communications Security"
     abbreviation: "ASIACCS"
@@ -280,6 +314,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "ACM International Conference on Multimedia Retrieval"
     abbreviation: "ICMR"
@@ -288,6 +323,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 1
 
   - name: "IEEE International Conference on Software Testing, Verification and Validation"
     abbreviation: "ICST"
@@ -296,6 +332,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 1
 
   - name: "ACM International Symposium on Software Testing and Analysis"
     abbreviation: "ISSTA"
@@ -304,6 +341,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "International Conference on Principles of Knowledge Representation and Reasoning"
     abbreviation: "KR"
@@ -312,6 +350,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "ACM Multimedia Conference"
     abbreviation: "MM"
@@ -320,6 +359,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "Network and Distributed System Security Symposium"
     abbreviation: "NDSS"
@@ -328,6 +368,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 1
 
   - name: "Science & Justice"
     abbreviation: "SJ"
@@ -336,6 +377,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "SIAM International Conference on Data Mining"
     abbreviation: "SDM"
@@ -344,6 +386,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "USENIX Security Symposium"
     abbreviation: "USENIX Security"
@@ -352,6 +395,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "ACM Symposium on Cloud Computing"
     abbreviation: "SoCC"
@@ -360,6 +404,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "Symposium On Usable Privacy and Security"
     abbreviation: "SOUPS"
@@ -368,6 +413,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 2
 
   - name: "ACM Symposium on User Interface Software and Technology"
     abbreviation: "UIST"
@@ -376,6 +422,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 1
 
   - name: "IEEE Visualization"
     abbreviation: "VIS"
@@ -384,6 +431,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 1
 
   - name: "ACM International Conference on Web Search and Data Mining"
     abbreviation: "WSDM"
@@ -392,6 +440,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 1
 
   - name: "International World Wide Web Conference"
     abbreviation: "WWW"
@@ -400,6 +449,7 @@ journals:
     e_issn: null
     aliases: []
     enabled: true
+    chunk_group: 2
 
 # Optional tracking section (not used by runtime filter)
 candidates_not_found:

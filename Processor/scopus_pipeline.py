@@ -3,6 +3,7 @@ from __future__ import annotations
 import concurrent.futures
 import json
 import re
+import sys
 import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -11,7 +12,7 @@ from typing import Callable
 
 import yaml
 
-from Collector.scopus import ScopusAbstractDetail, ScopusCollector
+from Collector.scopus import ScopusAbstractDetail, ScopusCollector, ScopusRateLimitError
 from Core.deduplicator import deduplicate_papers
 from Core.normalizer import NormalizedPaper, normalize_scopus_papers
 from Core.query_builder import ScopusKeywordSpec, ScopusQuery, build_scopus_queries
@@ -242,7 +243,7 @@ def _load_scopus_source_clauses(path: Path, *, chunk_size: int) -> list[str]:
     if not isinstance(journals, list):
         raise ValueError(f"Scopus journal filter file must contain a journals list: {path}")
 
-    source_terms: list[str] = []
+    source_terms: list[tuple[str, object | None]] = []
     seen: set[str] = set()
     for journal in journals:
         if not isinstance(journal, dict) or not journal.get("enabled", True):
@@ -260,12 +261,29 @@ def _load_scopus_source_clauses(path: Path, *, chunk_size: int) -> list[str]:
         if dedupe_key in seen:
             continue
         seen.add(dedupe_key)
-        source_terms.append(source_expr)
+        source_terms.append((source_expr, journal.get("chunk_group")))
 
     result: list[str] = []
+    grouped_source_terms = [(expr, group) for expr, group in source_terms if group is not None]
+    if grouped_source_terms:
+        groups: dict[object, list[str]] = {}
+        for source_expr, group in grouped_source_terms:
+            groups.setdefault(group, []).append(source_expr)
+        for group in sorted(groups, key=lambda value: str(value)):
+            result.append(f"({' OR '.join(groups[group])})")
+        ungrouped_source_terms = [expr for expr, group in source_terms if group is None]
+        if not ungrouped_source_terms:
+            return result
+        effective_chunk_size = max(1, chunk_size)
+        for index in range(0, len(ungrouped_source_terms), effective_chunk_size):
+            chunk = ungrouped_source_terms[index : index + effective_chunk_size]
+            result.append(f"({' OR '.join(chunk)})")
+        return result
+
     effective_chunk_size = max(1, chunk_size)
-    for index in range(0, len(source_terms), effective_chunk_size):
-        chunk = source_terms[index : index + effective_chunk_size]
+    ungrouped_source_terms = [source_expr for source_expr, _ in source_terms]
+    for index in range(0, len(ungrouped_source_terms), effective_chunk_size):
+        chunk = ungrouped_source_terms[index : index + effective_chunk_size]
         result.append(f"({' OR '.join(chunk)})")
     return result
 
@@ -327,7 +345,9 @@ def _build_scopus_collector(
         api_root=settings.scopus_api_root,
         timeout=settings.request_timeout,
         page_size=page_size or settings.scopus_page_size,
-        requests_per_second=settings.scopus_requests_per_second,
+        search_requests_per_second=settings.scopus_search_requests_per_second,
+        abstract_requests_per_second=settings.scopus_abstract_requests_per_second,
+        abstract_require_response=settings.scopus_abstract_require_response,
     )
 
 
@@ -443,11 +463,31 @@ def _scopus_abstract_identifiers(paper: NormalizedPaper) -> tuple[str | None, st
     return scopus_id, doi
 
 
+class _ConsoleLineProgress:
+    def __init__(self) -> None:
+        self._last_length = 0
+
+    def update(self, message: str) -> None:
+        padding = " " * max(0, self._last_length - len(message))
+        sys.stdout.write(f"\r{message}{padding}")
+        sys.stdout.flush()
+        self._last_length = len(message)
+
+    def finish(self) -> None:
+        if not self._last_length:
+            return
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+        self._last_length = 0
+
+
 def _parallel_enrich_scopus_abstract(
     *,
     settings: Settings,
     papers: list[NormalizedPaper],
     max_workers: int,
+    log: Callable[[str, str], None] | None = None,
+    progress: Callable[[int, int, int], None] | None = None,
 ) -> tuple[int, int]:
     abstract_targets = [
         paper
@@ -455,40 +495,82 @@ def _parallel_enrich_scopus_abstract(
         if any(_scopus_abstract_identifiers(paper))
     ]
     skipped = len(papers) - len(abstract_targets)
+    if skipped and log:
+        log("6", f"Abstract enrichment SKIP | no_scopus_id_or_doi={skipped}")
     if not abstract_targets:
         return 0, skipped
 
     worker_count = max(1, max_workers)
     if worker_count == 1:
         succeeded = 0
+        failed = skipped
         for paper in abstract_targets:
             collector = _build_scopus_collector(settings=settings, page_size=None)
             scopus_id, doi = _scopus_abstract_identifiers(paper)
-            detail = collector.fetch_abstract_detail(scopus_id=scopus_id, doi=doi)
+            try:
+                detail = collector.fetch_abstract_detail(scopus_id=scopus_id, doi=doi)
+            except Exception as exc:
+                failed += 1
+                if log:
+                    log("6", f"Abstract enrichment failed | source_id={paper.source_id} error={type(exc).__name__}: {exc}")
+                continue
             if detail:
                 _merge_scopus_abstract_detail(paper, detail)
                 succeeded += 1
-        return succeeded, len(papers) - succeeded
+            else:
+                failed += 1
+            if progress:
+                progress(succeeded + failed - skipped, succeeded, failed - skipped)
+        return succeeded, failed
 
     local_state = threading.local()
 
-    def _worker(paper: NormalizedPaper) -> tuple[NormalizedPaper, ScopusAbstractDetail | None]:
+    def _worker(paper: NormalizedPaper) -> tuple[NormalizedPaper, ScopusAbstractDetail | None, str | None]:
         if not hasattr(local_state, "collector"):
             local_state.collector = _build_scopus_collector(settings=settings, page_size=None)
         scopus_id, doi = _scopus_abstract_identifiers(paper)
-        detail = local_state.collector.fetch_abstract_detail(scopus_id=scopus_id, doi=doi)
-        return paper, detail
+        try:
+            detail = local_state.collector.fetch_abstract_detail(scopus_id=scopus_id, doi=doi)
+        except ScopusRateLimitError as exc:
+            if "All Scopus API keys are exhausted" in str(exc):
+                raise
+            return paper, None, f"{type(exc).__name__}: {exc}"
+        except Exception as exc:
+            return paper, None, f"{type(exc).__name__}: {exc}"
+        return paper, detail, None
 
     succeeded = 0
+    failed = skipped
+    completed = 0
+    logged_errors = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=worker_count) as executor:
         futures = [executor.submit(_worker, paper) for paper in abstract_targets]
         for future in concurrent.futures.as_completed(futures):
-            paper, detail = future.result()
-            if not detail:
-                continue
-            _merge_scopus_abstract_detail(paper, detail)
-            succeeded += 1
-    return succeeded, len(papers) - succeeded
+            completed += 1
+            try:
+                paper, detail, error = future.result()
+            except ScopusRateLimitError:
+                for pending in futures:
+                    pending.cancel()
+                raise
+            if error:
+                failed += 1
+                if log and logged_errors < 10:
+                    log("6", f"Abstract enrichment failed | source_id={paper.source_id} error={error}")
+                    logged_errors += 1
+            elif not detail:
+                failed += 1
+            else:
+                _merge_scopus_abstract_detail(paper, detail)
+                succeeded += 1
+
+            if progress:
+                progress(completed, succeeded, failed - skipped)
+    return succeeded, failed
+
+
+def _chunks(values: list[NormalizedPaper], size: int) -> list[list[NormalizedPaper]]:
+    return [values[index : index + size] for index in range(0, len(values), size)]
 
 
 def run_scopus_pipeline_yearly(
@@ -511,11 +593,6 @@ def run_scopus_pipeline_yearly(
         chunk_size=settings.scopus_source_chunk_size,
     )
     scopus_queries = build_scopus_queries(keyword_spec=keyword_spec, source_clauses=source_clauses)
-    allowed_subject_codes = _load_scopus_subject_code_allowlist(settings.scopus_subject_code_allowlist_path)
-    if allowed_subject_codes:
-        log("3", f"Scopus subject-code filter ENABLED | allow={len(allowed_subject_codes)}")
-    else:
-        log("3", "Scopus subject-code filter DISABLED | allowlist empty")
     positive_keyword_count = _count_scopus_positive_keyword_terms(keyword_spec)
     if positive_keyword_count:
         mode_counts = " ".join(
@@ -525,11 +602,12 @@ def run_scopus_pipeline_yearly(
         )
         log(
             "3",
-            f"Search keyword query ENABLED | keyword_terms={positive_keyword_count} "
+            f"Matched keyword tagging ENABLED | keyword_terms={positive_keyword_count} "
             f"exclude_terms={len(keyword_spec.exclude_terms)} {mode_counts}",
         )
     else:
-        log("3", "Search keyword query DISABLED | keyword list empty")
+        log("3", "Matched keyword tagging DISABLED | keyword list empty")
+    log("3", "Scopus Search API filters | doctype=ENABLED source=ENABLED keyword=DISABLED subjarea=DISABLED")
     if source_clauses:
         log("3", f"Scopus source filter ENABLED | chunks={len(source_clauses)} chunk_size={settings.scopus_source_chunk_size}")
     else:
@@ -609,39 +687,82 @@ def run_scopus_pipeline_yearly(
         incremental_count += len(incremental_batch)
         log("5", f"Incremental filtering END | query_index={index}/{total_queries} selected={len(incremental_batch)}")
 
+        checkpointed_source_ids: set[str] = set()
         if scopus_collector and new_scopus_papers and not skip_abstract:
-            log("6", f"Abstract enrichment START | query_index={index}/{total_queries} targets={len(new_scopus_papers)}")
-            succeeded, failed = _parallel_enrich_scopus_abstract(
-                settings=settings,
-                papers=new_scopus_papers,
-                max_workers=settings.scopus_abstract_max_workers,
+            abstract_batches = _chunks(new_scopus_papers, settings.scopus_abstract_batch_size)
+            total_papers = len(new_scopus_papers)
+            total_targets = sum(1 for paper in new_scopus_papers if any(_scopus_abstract_identifiers(paper)))
+            log(
+                "6",
+                f"Abstract enrichment START | query_index={index}/{total_queries} "
+                f"targets={total_targets} papers={total_papers} "
+                f"batches={len(abstract_batches)} batch_size={settings.scopus_abstract_batch_size}",
             )
+            total_succeeded = 0
+            total_failed = 0
+            processed_targets = 0
+            processed_abstract_targets = 0
+            line_progress = _ConsoleLineProgress()
+
+            def _abstract_log(step: str, message: str) -> None:
+                line_progress.finish()
+                log(step, message)
+
+            for batch_index, abstract_batch in enumerate(abstract_batches, start=1):
+                batch_target_count = sum(1 for paper in abstract_batch if any(_scopus_abstract_identifiers(paper)))
+
+                def _render_progress(batch_completed: int, batch_succeeded: int, batch_failed: int) -> None:
+                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    completed_now = processed_abstract_targets + batch_completed
+                    succeeded_now = total_succeeded + batch_succeeded
+                    failed_now = total_failed + batch_failed
+                    line_progress.update(
+                        f"[{timestamp}] [6] Abstract enrichment progress | "
+                        f"query_index={index}/{total_queries} "
+                        f"abstract_batch={batch_index}/{len(abstract_batches)} "
+                        f"completed={completed_now}/{total_targets} "
+                        f"succeeded={succeeded_now} failed={failed_now}"
+                    )
+
+                try:
+                    succeeded, failed = _parallel_enrich_scopus_abstract(
+                        settings=settings,
+                        papers=abstract_batch,
+                        max_workers=settings.scopus_abstract_max_workers,
+                        log=_abstract_log,
+                        progress=_render_progress,
+                    )
+                finally:
+                    line_progress.finish()
+                total_succeeded += succeeded
+                total_failed += failed
+                processed_targets += len(abstract_batch)
+                processed_abstract_targets += batch_target_count
+                _annotate_matched_keywords(abstract_batch, keyword_spec)
+                summarized_batch = summarize_papers(abstract_batch)
+                relevant_count += len(summarized_batch)
+                export_rows.extend(summarized_batch)
+                stored_count += db.upsert_scopus_papers(summarized_batch)
+                checkpointed_source_ids.update(paper.source_id for paper in abstract_batch if paper.source_id)
+                log(
+                    "8",
+                    f"DB checkpoint END | query_index={index}/{total_queries} "
+                    f"abstract_batch={batch_index}/{len(abstract_batches)} "
+                    f"processed={processed_targets}/{total_papers} stored={len(summarized_batch)}",
+                )
             log(
                 "6",
                 f"Abstract enrichment END | query_index={index}/{total_queries} "
-                f"succeeded={succeeded} failed={failed}",
+                f"succeeded={total_succeeded} failed={total_failed}",
             )
-            _annotate_matched_keywords(incremental_batch, keyword_spec)
 
-        if allowed_subject_codes and not skip_abstract:
-            filtered_by_subject: list[NormalizedPaper] = []
-            dropped_by_subject = 0
-            for paper in incremental_batch:
-                parsed_codes = _parse_subject_area_codes(paper.subject_code)
-                if parsed_codes and parsed_codes.intersection(allowed_subject_codes):
-                    filtered_by_subject.append(paper)
-                    continue
-                dropped_by_subject += 1
-            incremental_batch = filtered_by_subject
-            log(
-                "6",
-                f"Subject-code filter END | query_index={index}/{total_queries} "
-                f"kept={len(incremental_batch)} dropped={dropped_by_subject}",
-            )
-        elif allowed_subject_codes and skip_abstract:
-            log("6", f"Subject-code filter SKIPPED | query_index={index}/{total_queries} reason=abstract disabled")
-
-        summarized = summarize_papers(incremental_batch)
+        remaining_incremental_batch = [
+            paper
+            for paper in incremental_batch
+            if paper.source_id not in checkpointed_source_ids
+        ]
+        _annotate_matched_keywords(remaining_incremental_batch, keyword_spec)
+        summarized = summarize_papers(remaining_incremental_batch)
         relevant_count += len(summarized)
         export_rows.extend(summarized)
         stored_count += db.upsert_scopus_papers(summarized)

@@ -49,10 +49,14 @@ class Settings:
     scopus_subject_code_allowlist_path: Path = Path("filters/scopus_subject_codes.json")
     scopus_keyword_filter_keywords_path: Path = Path("filters/keywords_scopus.json")
     scopus_journal_filter_path: Path = Path("filters/scopus_journals.yaml")
-    scopus_source_chunk_size: int = 1
+    scopus_source_chunk_size: int = 25
     kci_keyword_filter_keywords_path: Path = Path("filters/keywords_ko.json")
-    scopus_abstract_max_workers: int = 6
+    scopus_abstract_max_workers: int = 12
+    scopus_abstract_batch_size: int = 500
+    scopus_abstract_require_response: bool = True
     scopus_requests_per_second: float = 5.0
+    scopus_search_requests_per_second: float = 5.0
+    scopus_abstract_requests_per_second: float = 2.0
     state_key_last_success_at: str = "kci:last_success_at"
     state_key_scopus_last_success_at: str = "scopus:last_success_at"
 
@@ -120,10 +124,21 @@ def load_settings(validate: bool = True) -> Settings:
         scopus_journal_filter_path=Path(
             os.getenv("SCOPUS_JOURNAL_FILTER_PATH", "filters/scopus_journals.yaml")
         ),
-        scopus_source_chunk_size=max(1, int(os.getenv("SCOPUS_SOURCE_CHUNK_SIZE", "1"))),
+        scopus_source_chunk_size=max(1, int(os.getenv("SCOPUS_SOURCE_CHUNK_SIZE", "25"))),
         kci_keyword_filter_keywords_path=Path("filters/keywords_ko.json"),
-        scopus_abstract_max_workers=max(1, int(os.getenv("SCOPUS_ABSTRACT_MAX_WORKERS", "6"))),
+        scopus_abstract_max_workers=max(1, int(os.getenv("SCOPUS_ABSTRACT_MAX_WORKERS", "12"))),
+        scopus_abstract_batch_size=max(1, int(os.getenv("SCOPUS_ABSTRACT_BATCH_SIZE", "500"))),
+        scopus_abstract_require_response=os.getenv("SCOPUS_ABSTRACT_REQUIRE_RESPONSE", "true").strip().casefold()
+        not in {"0", "false", "no", "n"},
         scopus_requests_per_second=max(0.1, float(os.getenv("SCOPUS_REQUESTS_PER_SECOND", "5"))),
+        scopus_search_requests_per_second=max(
+            0.1,
+            float(os.getenv("SCOPUS_SEARCH_REQUESTS_PER_SECOND", os.getenv("SCOPUS_REQUESTS_PER_SECOND", "5"))),
+        ),
+        scopus_abstract_requests_per_second=max(
+            0.1,
+            float(os.getenv("SCOPUS_ABSTRACT_REQUESTS_PER_SECOND", "2")),
+        ),
         state_key_last_success_at=os.getenv("STATE_KEY_LAST_SUCCESS_AT", "kci:last_success_at"),
         state_key_scopus_last_success_at=os.getenv(
             "STATE_KEY_SCOPUS_LAST_SUCCESS_AT",

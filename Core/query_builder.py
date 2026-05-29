@@ -214,30 +214,21 @@ def build_scopus_queries(
     target_years: Iterable[int] | None = None,
 ) -> list[ScopusQuery]:
     """Create Scopus query objects for each target year."""
+    _ = keyword_terms, keyword_spec
     queries: list[ScopusQuery] = []
     years = tuple(target_years) if target_years is not None else get_scopus_target_years()
-    effective_keyword_spec = keyword_spec or _keyword_spec_from_flat_terms(keyword_terms)
-    keyword_clause = _build_scopus_positive_keyword_clause(effective_keyword_spec)
-    exclude_keyword_clause = _build_scopus_exclude_keyword_clause(effective_keyword_spec)
     source_clause_values = tuple(source_clauses or ())
     if not source_clause_values:
         source_clause_values = ("",)
-    subj = ",".join(SCOPUS_INCLUDE_SUBJECTS)
 
     for year in years:
         base_query = _build_scopus_base_query_for_year(year)
-        exclude_subject_clause = _build_scopus_exclude_subject_clause()
-        common_tail = " ".join(part for part in (exclude_keyword_clause, exclude_subject_clause) if part)
         for source_clause in source_clause_values:
             positive_parts = [base_query]
-            if keyword_clause:
-                positive_parts.append(keyword_clause)
             if source_clause:
                 positive_parts.append(source_clause)
             query_text = " AND ".join(positive_parts)
-            if common_tail:
-                query_text = f"{query_text} {common_tail}"
-            queries.append(ScopusQuery(query=query_text, date=str(year), subj=subj))
+            queries.append(ScopusQuery(query=query_text, date=str(year)))
 
     deduped: list[ScopusQuery] = []
     seen: set[tuple[str, str | None, str | None, str | None, str | None]] = set()

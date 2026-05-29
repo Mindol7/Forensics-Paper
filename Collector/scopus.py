@@ -65,9 +65,10 @@ class ScopusAbstractDetail:
 
 class ScopusCollector:
     _rate_limit_lock = threading.Lock()
-    _global_pause_until_monotonic = 0.0
-    _next_request_at_monotonic = 0.0
-    _exhausted_api_keys: set[str] = set()
+    _next_key_index_by_family: dict[str, int] = {}
+    _next_request_at_by_key: dict[tuple[str, str], float] = {}
+    _pause_until_by_key: dict[tuple[str, str], float] = {}
+    _exhausted_api_keys_by_family: set[tuple[str, str]] = set()
     _abstract_field_aliases = (
         "url",
         "title",
@@ -94,9 +95,11 @@ class ScopusCollector:
         retry_count: int = 5,
         retry_backoff_seconds: float = 1.0,
         requests_per_second: float = 5.0,
+        search_requests_per_second: float | None = None,
+        abstract_requests_per_second: float | None = None,
+        abstract_require_response: bool = False,
     ) -> None:
         self.api_keys = self._normalize_api_keys(api_key, api_keys)
-        self._api_key_index = 0
         self.api_root = api_root.rstrip("/")
         self.search_url = f"{self.api_root}/search/scopus"
         self.timeout = timeout
@@ -104,7 +107,16 @@ class ScopusCollector:
         self.session = session or requests.Session()
         self.retry_count = retry_count
         self.retry_backoff_seconds = retry_backoff_seconds
-        self.min_request_interval_seconds = 1.0 / requests_per_second if requests_per_second > 0 else 0.0
+        search_rps = search_requests_per_second if search_requests_per_second is not None else requests_per_second
+        abstract_rps = abstract_requests_per_second if abstract_requests_per_second is not None else requests_per_second
+        self.min_request_interval_seconds_by_family = {
+            "search": 1.0 / search_rps if search_rps > 0 else 0.0,
+            "abstract": 1.0 / abstract_rps if abstract_rps > 0 else 0.0,
+        }
+        self.require_terminal_response_by_family = {
+            "search": False,
+            "abstract": abstract_require_response,
+        }
 
     @staticmethod
     def _normalize_api_keys(api_key: str | None, api_keys: tuple[str, ...] | None) -> tuple[str, ...]:
@@ -123,66 +135,72 @@ class ScopusCollector:
         return tuple(result)
 
     @classmethod
-    def _wait_for_global_pause(cls) -> None:
-        while True:
-            with cls._rate_limit_lock:
-                remaining = cls._global_pause_until_monotonic - time.monotonic()
-            if remaining <= 0:
-                return
-            time.sleep(min(remaining, 1.0))
-
-    @classmethod
-    def _extend_global_pause(cls, seconds: float) -> None:
-        if seconds <= 0:
-            return
-        with cls._rate_limit_lock:
-            candidate = time.monotonic() + seconds
-            if candidate > cls._global_pause_until_monotonic:
-                cls._global_pause_until_monotonic = candidate
-
-    @classmethod
-    def _wait_for_request_slot(cls, min_interval_seconds: float) -> None:
+    def _reserve_api_key_slot(
+        cls,
+        *,
+        api_keys: tuple[str, ...],
+        family: str,
+        min_interval_seconds: float,
+    ) -> str:
         while True:
             with cls._rate_limit_lock:
                 now = time.monotonic()
-                ready_at = max(cls._global_pause_until_monotonic, cls._next_request_at_monotonic)
-                wait_seconds = ready_at - now
-                if wait_seconds <= 0:
-                    cls._next_request_at_monotonic = now + max(0.0, min_interval_seconds)
-                    return
+                active_keys = [
+                    key
+                    for key in api_keys
+                    if (family, key) not in cls._exhausted_api_keys_by_family
+                ]
+                if not active_keys:
+                    raise ScopusRateLimitError(f"All Scopus API keys are exhausted for {family}")
+
+                start_index = cls._next_key_index_by_family.get(family, 0)
+                best_wait_seconds: float | None = None
+                for offset in range(len(active_keys)):
+                    active_index = (start_index + offset) % len(active_keys)
+                    api_key = active_keys[active_index]
+                    key = (family, api_key)
+                    ready_at = max(
+                        cls._pause_until_by_key.get(key, 0.0),
+                        cls._next_request_at_by_key.get(key, 0.0),
+                    )
+                    wait_seconds = ready_at - now
+                    if wait_seconds <= 0:
+                        cls._next_key_index_by_family[family] = (active_index + 1) % len(active_keys)
+                        cls._next_request_at_by_key[key] = now + max(0.0, min_interval_seconds)
+                        return api_key
+                    if best_wait_seconds is None or wait_seconds < best_wait_seconds:
+                        best_wait_seconds = wait_seconds
+            wait_seconds = best_wait_seconds if best_wait_seconds is not None else 1.0
             time.sleep(min(wait_seconds, 1.0))
 
     @classmethod
-    def _mark_api_key_exhausted(cls, api_key: str) -> None:
+    def _mark_api_key_exhausted(cls, family: str, api_key: str) -> None:
         with cls._rate_limit_lock:
-            cls._exhausted_api_keys.add(api_key)
+            cls._exhausted_api_keys_by_family.add((family, api_key))
 
     @classmethod
-    def _is_api_key_exhausted(cls, api_key: str) -> bool:
+    def _pause_api_key(cls, family: str, api_key: str, seconds: float) -> None:
+        if seconds <= 0:
+            return
         with cls._rate_limit_lock:
-            return api_key in cls._exhausted_api_keys
+            key = (family, api_key)
+            candidate = time.monotonic() + seconds
+            if candidate > cls._pause_until_by_key.get(key, 0.0):
+                cls._pause_until_by_key[key] = candidate
 
-    def _current_api_key(self) -> str:
-        for offset in range(len(self.api_keys)):
-            index = (self._api_key_index + offset) % len(self.api_keys)
-            api_key = self.api_keys[index]
-            if not self._is_api_key_exhausted(api_key):
-                self._api_key_index = index
-                return api_key
-        return self.api_keys[self._api_key_index]
-
-    def _advance_api_key(self, exhausted_api_key: str) -> bool:
-        self._mark_api_key_exhausted(exhausted_api_key)
-        for offset in range(1, len(self.api_keys) + 1):
-            index = (self._api_key_index + offset) % len(self.api_keys)
-            api_key = self.api_keys[index]
-            if not self._is_api_key_exhausted(api_key):
-                self._api_key_index = index
-                return True
-        return False
+    @classmethod
+    def _has_available_api_key(cls, family: str, api_keys: tuple[str, ...]) -> bool:
+        with cls._rate_limit_lock:
+            return any((family, api_key) not in cls._exhausted_api_keys_by_family for api_key in api_keys)
 
     @staticmethod
     def _is_quota_exceeded_response(response: requests.Response) -> bool:
+        remaining = response.headers.get("X-RateLimit-Remaining")
+        if remaining is not None:
+            try:
+                return int(remaining) <= 0
+            except ValueError:
+                pass
         return (
             response.status_code == 429
             and not response.headers.get("Retry-After")
@@ -212,7 +230,7 @@ class ScopusCollector:
         return max(0.0, delta)
 
     def _compute_retry_delay(self, *, attempt: int, response: requests.Response | None) -> float:
-        base = self.retry_backoff_seconds * (2**attempt)
+        base = self.retry_backoff_seconds * (2 ** min(attempt, 7))
         jitter = random.uniform(0.0, max(0.1, self.retry_backoff_seconds))
         delay = base + jitter
         retry_after = self._parse_retry_after_seconds(response) if response is not None else None
@@ -220,19 +238,34 @@ class ScopusCollector:
             delay = max(delay, retry_after)
         return min(delay, 120.0)
 
+    def _requires_terminal_response(self, *, request_family: str, response: requests.Response | None) -> bool:
+        if not self.require_terminal_response_by_family.get(request_family, False):
+            return False
+        if response is None:
+            return True
+        return response.status_code == 429 or response.status_code >= 500
+
     def _request_json_with_retries(
         self,
         *,
         url: str,
         params: dict[str, Any],
         expected_root_key: str,
+        request_family: str,
     ) -> dict[str, Any]:
         last_error: Exception | None = None
         attempt = 0
 
-        while attempt <= self.retry_count:
-            self._wait_for_request_slot(self.min_request_interval_seconds)
-            api_key = self._current_api_key()
+        while True:
+            try:
+                api_key = self._reserve_api_key_slot(
+                    api_keys=self.api_keys,
+                    family=request_family,
+                    min_interval_seconds=self.min_request_interval_seconds_by_family.get(request_family, 0.0),
+                )
+            except ScopusRateLimitError as exc:
+                last_error = exc
+                break
             headers = {
                 "X-ELS-APIKey": api_key,
                 "Accept": "application/json",
@@ -250,15 +283,18 @@ class ScopusCollector:
                         f"Scopus rate-limited request (429): url={url} retry_after={response.headers.get('Retry-After')}"
                     )
                     if self._is_quota_exceeded_response(response):
-                        if self._advance_api_key(api_key):
+                        self._mark_api_key_exhausted(request_family, api_key)
+                        if self._has_available_api_key(request_family, self.api_keys):
                             attempt = 0
                             continue
                         break
                     delay = self._compute_retry_delay(attempt=attempt, response=response)
-                    self._extend_global_pause(delay)
-                    if attempt >= self.retry_count:
+                    self._pause_api_key(request_family, api_key, delay)
+                    if attempt >= self.retry_count and not self._requires_terminal_response(
+                        request_family=request_family,
+                        response=response,
+                    ):
                         break
-                    time.sleep(delay)
                     attempt += 1
                     continue
 
@@ -269,11 +305,16 @@ class ScopusCollector:
                 return payload
             except (requests.RequestException, ValueError, ScopusApiError) as exc:
                 last_error = exc
-                if attempt >= self.retry_count:
+                if response is not None and 400 <= response.status_code < 500 and response.status_code != 429:
+                    break
+                if attempt >= self.retry_count and not self._requires_terminal_response(
+                    request_family=request_family,
+                    response=response,
+                ):
                     break
                 delay = self._compute_retry_delay(attempt=attempt, response=response)
                 if response is not None and response.status_code in (429, 503):
-                    self._extend_global_pause(delay)
+                    self._pause_api_key(request_family, api_key, delay)
                 time.sleep(delay)
                 attempt += 1
 
@@ -431,6 +472,7 @@ class ScopusCollector:
             url=self.search_url,
             params=params,
             expected_root_key="search-results",
+            request_family="search",
         )
 
     def _parse_items(self, payload: dict[str, Any], *, matched_query: str) -> tuple[list[ScopusRawPaper], int]:
@@ -526,6 +568,7 @@ class ScopusCollector:
             url=url,
             params=params,
             expected_root_key="abstracts-retrieval-response",
+            request_family="abstract",
         )
 
     def _parse_abstract_detail(self, payload: dict[str, Any]) -> ScopusAbstractDetail:
