@@ -3,6 +3,7 @@ from __future__ import annotations
 import concurrent.futures
 import json
 import re
+import shutil
 import sys
 import threading
 from dataclasses import dataclass
@@ -468,6 +469,9 @@ class _ConsoleLineProgress:
         self._last_length = 0
 
     def update(self, message: str) -> None:
+        width = max(20, shutil.get_terminal_size(fallback=(120, 20)).columns - 1)
+        if len(message) > width:
+            message = message[: width - 1]
         padding = " " * max(0, self._last_length - len(message))
         sys.stdout.write(f"\r{message}{padding}")
         sys.stdout.flush()
@@ -712,16 +716,15 @@ def run_scopus_pipeline_yearly(
                 batch_target_count = sum(1 for paper in abstract_batch if any(_scopus_abstract_identifiers(paper)))
 
                 def _render_progress(batch_completed: int, batch_succeeded: int, batch_failed: int) -> None:
-                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     completed_now = processed_abstract_targets + batch_completed
                     succeeded_now = total_succeeded + batch_succeeded
                     failed_now = total_failed + batch_failed
                     line_progress.update(
-                        f"[{timestamp}] [6] Abstract enrichment progress | "
-                        f"query_index={index}/{total_queries} "
-                        f"abstract_batch={batch_index}/{len(abstract_batches)} "
-                        f"completed={completed_now}/{total_targets} "
-                        f"succeeded={succeeded_now} failed={failed_now}"
+                        f"[6] Abstract progress | "
+                        f"q={index}/{total_queries} "
+                        f"batch={batch_index}/{len(abstract_batches)} "
+                        f"done={completed_now}/{total_targets} "
+                        f"ok={succeeded_now} fail={failed_now}"
                     )
 
                 try:
