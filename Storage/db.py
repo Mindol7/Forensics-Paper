@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 from typing import Iterable
 
-from sqlalchemy import Boolean, Float, Integer, String, Text, create_engine, select
+from sqlalchemy import Boolean, Float, Integer, String, Text, create_engine, delete, inspect, or_, select, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from Core.normalizer import NormalizedPaper
@@ -50,7 +50,8 @@ class PaperRecord(Base):
     registered_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
     updated_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
     publication_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    matched_queries_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    category: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    matched_keywords_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     relevance_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     relevance_reasons_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     is_relevant: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
@@ -97,6 +98,8 @@ class ScopusPaperRecord(Base):
     registered_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
     updated_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
     publication_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    category: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    matched_keywords_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     raw_payload_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
 
@@ -108,6 +111,29 @@ class DatabaseManager:
 
     def create_tables(self) -> None:
         Base.metadata.create_all(self.engine)
+        self._ensure_schema()
+
+    def _ensure_schema(self) -> None:
+        inspector = inspect(self.engine)
+        table_names = set(inspector.get_table_names())
+        with self.engine.begin() as connection:
+            if "kci_papers" in table_names:
+                columns = {column["name"] for column in inspector.get_columns("kci_papers")}
+                if "category" not in columns and "matched_queries_json" in columns:
+                    connection.execute(text("ALTER TABLE kci_papers RENAME COLUMN matched_queries_json TO category"))
+                    columns.remove("matched_queries_json")
+                    columns.add("category")
+                if "category" not in columns:
+                    connection.execute(text("ALTER TABLE kci_papers ADD COLUMN category TEXT NOT NULL DEFAULT '[]'"))
+                if "matched_keywords_json" not in columns:
+                    connection.execute(text("ALTER TABLE kci_papers ADD COLUMN matched_keywords_json TEXT NOT NULL DEFAULT '[]'"))
+
+            if "scopus_papers" in table_names:
+                columns = {column["name"] for column in inspector.get_columns("scopus_papers")}
+                if "category" not in columns:
+                    connection.execute(text("ALTER TABLE scopus_papers ADD COLUMN category TEXT NOT NULL DEFAULT '[]'"))
+                if "matched_keywords_json" not in columns:
+                    connection.execute(text("ALTER TABLE scopus_papers ADD COLUMN matched_keywords_json TEXT NOT NULL DEFAULT '[]'"))
 
     def get_state(self, key: str) -> str | None:
         with self.session_factory() as session:
@@ -151,6 +177,41 @@ class DatabaseManager:
         with self.session_factory() as session:
             return int(session.query(PaperRecord).count())
 
+    def delete_kci_papers_outside_year_range(self, *, start_year: int, end_year: int) -> int:
+        with self.session_factory() as session:
+            result = session.execute(
+                delete(PaperRecord)
+                .where(PaperRecord.source == "kci")
+                .where(
+                    or_(
+                        PaperRecord.publication_year.is_(None),
+                        PaperRecord.publication_year < start_year,
+                        PaperRecord.publication_year > end_year,
+                    )
+                )
+            )
+            session.commit()
+            return int(result.rowcount or 0)
+
+    def delete_kci_papers_with_invalid_match_evidence(self) -> int:
+        with self.session_factory() as session:
+            result = session.execute(
+                delete(PaperRecord)
+                .where(PaperRecord.source == "kci")
+                .where(
+                    or_(
+                        PaperRecord.category.in_(("", "[]")),
+                        PaperRecord.matched_keywords_json.in_(("", "[]")),
+                        PaperRecord.relevance_reasons_json.in_(("", "[]")),
+                        PaperRecord.category.like('%"*"%'),
+                        PaperRecord.matched_keywords_json.like('%"*"%'),
+                        PaperRecord.relevance_reasons_json.like('%"*"%'),
+                    )
+                )
+            )
+            session.commit()
+            return int(result.rowcount or 0)
+
     def existing_scopus_source_ids(self, source_ids: Iterable[str]) -> set[str]:
         normalized_ids = [source_id for source_id in source_ids if source_id]
         if not normalized_ids:
@@ -184,7 +245,33 @@ class DatabaseManager:
             return int(session.query(ScopusPaperRecord).count())
 
     @staticmethod
+    def _clean_list(values: Iterable[str]) -> list[str]:
+        cleaned_values: list[str] = []
+        seen: set[str] = set()
+        for value in values:
+            cleaned = value.strip() if isinstance(value, str) else ""
+            if not cleaned or cleaned == "*":
+                continue
+            key = cleaned.casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            cleaned_values.append(cleaned)
+        return cleaned_values
+
+    @staticmethod
+    def _clean_kci_classification(paper: NormalizedPaper) -> tuple[list[str], list[str], list[str]]:
+        categories = DatabaseManager._clean_list(paper.categories)
+        matched_keywords = DatabaseManager._clean_list(paper.matched_keywords)
+        reasons = DatabaseManager._clean_list(paper.relevance_reasons) or matched_keywords
+        if paper.source == "kci" and (not categories or not matched_keywords):
+            raise ValueError(f"KCI paper has no category or matched keyword evidence: {paper.source_id}")
+        return categories, matched_keywords, reasons
+
+    @staticmethod
     def _apply_paper(record: PaperRecord, paper: NormalizedPaper) -> None:
+        categories, matched_keywords, reasons = DatabaseManager._clean_kci_classification(paper)
+
         record.source = paper.source
         record.title = paper.title
         record.title_kor = paper.title_kor
@@ -212,9 +299,10 @@ class DatabaseManager:
         record.registered_at = paper.registered_at
         record.updated_at = paper.updated_at
         record.publication_year = paper.publication_year
-        record.matched_queries_json = json.dumps(paper.matched_queries, ensure_ascii=False)
+        record.category = json.dumps(categories, ensure_ascii=False)
+        record.matched_keywords_json = json.dumps(matched_keywords, ensure_ascii=False)
         record.relevance_score = paper.relevance_score
-        record.relevance_reasons_json = json.dumps(paper.relevance_reasons, ensure_ascii=False)
+        record.relevance_reasons_json = json.dumps(reasons, ensure_ascii=False)
         record.is_relevant = paper.is_relevant
         record.summary = paper.summary
         record.raw_payload_json = json.dumps(paper.raw_payload, ensure_ascii=False)
@@ -248,5 +336,7 @@ class DatabaseManager:
         record.registered_at = paper.registered_at
         record.updated_at = paper.updated_at
         record.publication_year = paper.publication_year
+        record.category = json.dumps(DatabaseManager._clean_list(paper.categories), ensure_ascii=False)
+        record.matched_keywords_json = json.dumps(DatabaseManager._clean_list(paper.matched_keywords), ensure_ascii=False)
         record.summary = paper.summary
         record.raw_payload_json = json.dumps(paper.raw_payload, ensure_ascii=False)
