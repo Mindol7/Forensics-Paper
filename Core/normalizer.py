@@ -1,6 +1,6 @@
 # normalizer.py #
 """
-    - KCI에서 수집한 '원본 논문 데이터'를 표준화된 구조로 변환하는 모듈
+    - KCI/Scopus에서 수집한 '원본 논문 데이터'를 표준화된 구조로 변환하는 모듈
     - 다양한 형식 raw 데이터 -> 정리된 NormalizedPaper 객체 변환 -> 이후 필터링/저장/분석에 사용.
 """
 
@@ -13,6 +13,26 @@ from typing import Any, Iterable
 
 from Collector.kci import KciRawPaper
 from Collector.scopus import ScopusRawPaper
+
+
+def _to_int(value: str | None) -> int | None:
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        return None
+
+
+def _pick_first(*values: str | None) -> str | None:
+    for value in values:
+        if value:
+            return value
+    return None
+
+
+def _contains_hangul(value: str) -> bool:
+    return bool(re.search(r"[가-힣]", value))
 
 
 @dataclass
@@ -48,6 +68,8 @@ class NormalizedPaper:
     registered_at: str | None = None
     updated_at: str | None = None
     publication_year: int | None = None
+    categories: list[str] = field(default_factory=list)
+    matched_keywords: list[str] = field(default_factory=list)
     matched_queries: list[str] = field(default_factory=list)
     relevance_score: float | None = None
     relevance_reasons: list[str] = field(default_factory=list)
@@ -80,82 +102,64 @@ def split_keywords(*values: str | None) -> list[str]:
     return result
 
 # 날짜 처리 (다양한 날짜 포맷 -> ISO 표준 변환)
-def normalize_kci_datetime(value: str | None) -> str | None:
-    if not value:
+def _compose_pub_date(pub_year: str | None, pub_mon: str | None) -> str | None:
+    if not pub_year:
         return None
-
-    text = value.strip()
-    formats = ["%Y%m%d%H%M%S", "%Y-%m-%d", "%Y%m%d"]
-    for fmt in formats:
-        try:
-            parsed = datetime.strptime(text, fmt)
-            if fmt == "%Y-%m-%d":
-                return parsed.date().isoformat()
-            if fmt == "%Y%m%d":
-                return parsed.date().isoformat()
-            return parsed.isoformat()
-        except ValueError:
-            continue
-    return text
-
-
-def _to_int(value: str | None) -> int | None:
-    if value is None or value == "":
-        return None
-    try:
-        return int(value)
-    except ValueError:
-        return None
-
-
-def _pick_first(*values: str | None) -> str | None:
-    for value in values:
-        if value:
-            return value
-    return None
+    if pub_mon:
+        return f"{pub_year}-{pub_mon.zfill(2)}"
+    return pub_year
 
 
 def normalize_kci_paper(raw_paper: KciRawPaper) -> NormalizedPaper:
-    registered_at = normalize_kci_datetime(raw_paper.registered_at_raw)
-    updated_at = normalize_kci_datetime(raw_paper.updated_at_raw)
-    keywords = split_keywords(raw_paper.keyword_kor, raw_paper.keyword_eng, raw_paper.keyword_fola)
+    title = _pick_first(raw_paper.title_original, raw_paper.title_english, raw_paper.title_foreign)
+    abstract = _pick_first(raw_paper.abstract_original, raw_paper.abstract_english)
+    registered_at = _compose_pub_date(raw_paper.pub_year, raw_paper.pub_mon)
+    publication_year = _to_int(raw_paper.pub_year)
+    keywords = split_keywords(*raw_paper.keywords)
+    keywords_kor = [keyword for keyword in keywords if _contains_hangul(keyword)]
+    keywords_eng = [keyword for keyword in keywords if not _contains_hangul(keyword)]
 
     return NormalizedPaper(
         source="kci",
-        source_id=raw_paper.arti_id or raw_paper.uci or raw_paper.doi or raw_paper.title_kor or raw_paper.title_eng or "unknown",
-        title=_pick_first(raw_paper.title_kor, raw_paper.title_eng, raw_paper.title_fola),
-        title_kor=raw_paper.title_kor,
-        title_eng=raw_paper.title_eng,
-        title_other=raw_paper.title_fola,
+        source_id=raw_paper.arti_id or raw_paper.doi or raw_paper.uci or title or "unknown",
+        title=title,
+        title_kor=raw_paper.title_original,
+        title_eng=raw_paper.title_english,
+        title_other=raw_paper.title_foreign,
         doi=raw_paper.doi,
         uci=raw_paper.uci,
         url=raw_paper.url,
-        abstract=_pick_first(raw_paper.abstract_kor, raw_paper.abstract_eng, raw_paper.abstract_fola),
-        abstract_kor=raw_paper.abstract_kor,
-        abstract_eng=raw_paper.abstract_eng,
-        abstract_other=raw_paper.abstract_fola,
+        abstract=abstract,
+        abstract_kor=raw_paper.abstract_original,
+        abstract_eng=raw_paper.abstract_english,
+        abstract_other=None,
         keywords=keywords,
-        keyword_text_kor=raw_paper.keyword_kor,
-        keyword_text_eng=raw_paper.keyword_eng,
-        keyword_text_other=raw_paper.keyword_fola,
-        authors=[],
-        journal_id=raw_paper.sere_id,
-        institution_id=raw_paper.insi_id,
-        issue_id=raw_paper.vol_isse_id,
+        keyword_text_kor="; ".join(keywords_kor) if keywords_kor else None,
+        keyword_text_eng="; ".join(keywords_eng) if keywords_eng else None,
+        keyword_text_other=None,
+        authors=list(raw_paper.authors),
+        journal_id=raw_paper.journal_id or raw_paper.journal_name,
+        institution_id=raw_paper.publisher_name,
+        issue_id=f"{raw_paper.volume}_{raw_paper.issue}" if raw_paper.volume and raw_paper.issue else (raw_paper.volume or raw_paper.issue),
         first_page=raw_paper.first_page,
-        final_page=raw_paper.final_page,
-        page_count=_to_int(raw_paper.total_page_count),
+        final_page=raw_paper.last_page,
+        page_count=None,
         issn=raw_paper.issn,
         eissn=raw_paper.eissn,
-        subject_code=raw_paper.subject_code,
-        is_fulltext=True if raw_paper.is_fulltext == "Y" else False if raw_paper.is_fulltext == "N" else None,
+        subject_code=raw_paper.article_categories,
+        is_fulltext=True if raw_paper.is_open_access == "Y" else False if raw_paper.is_open_access == "N" else None,
         registered_at=registered_at,
-        updated_at=updated_at,
-        # openApiM310List does not expose an explicit publication date/year.
-        # Keep this field empty instead of inferring from registration metadata.
-        publication_year=None,
+        updated_at=None,
+        publication_year=publication_year,
         matched_queries=[raw_paper.matched_query] if raw_paper.matched_query else [],
-        raw_payload=raw_paper.raw_item,
+        raw_payload={
+            "arti_id": raw_paper.arti_id,
+            "matched_field": raw_paper.matched_field,
+            "verified": raw_paper.verified,
+            "citation_count_kci": raw_paper.citation_count_kci,
+            "citation_count_wos": raw_paper.citation_count_wos,
+            "article_regularity": raw_paper.article_regularity,
+        },
     )
 
 

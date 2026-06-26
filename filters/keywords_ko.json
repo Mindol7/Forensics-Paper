@@ -1,28 +1,336 @@
 {
-  "include_any": [
-    "잠재적 디지털 증거 출처 식별",
-	"디지털 증거 트리아지",
-	"디바이스 데이터 수집",
-	"네트워크 데이터 수집",
-	"클라우드 데이터 수집",
-	"디지털 증거 보존",
-	"가상화 포렌식",
-	"컨테이너 포렌식",
-	"파일시스템 포렌식",
-	"운영체제 포렌식",
-	"애플리케이션 포렌식",
-	"파일 포렌식",
-	"네트워크 포렌식",
-	"클라우드 포렌식",
-	"데이터 통합 분석",
-	"이벤트 재구성",
-	"안티-포렌식 대응",
-	"포렌식 인프라",
-	"침해사고 대응",
-	"멀티미디어 포렌식",
-	"가상자산 포렌식",
-	"산업 분야 포렌식",
-	"인공지능 포렌식"
-  ],
-  "exclude_any": []
+  "디지털포렌식": {
+    "디지털 증거 식별 및 분류": {
+      "잠재적 디지털 증거 출처 식별": {
+        "direct": [
+           "디지털 증거 식별"
+        ],
+        "anchored": [
+           "장치 식별",
+           "기기 식별",
+           "네트워크 식별"
+        ],
+        "anchored_digital_forensic": [
+          "증거 식별"
+        ]  
+      },
+      "디지털 증거 트리아지": {
+        "anchored_digital_forensic": [
+          "트리아지",
+          "우선순위"
+        ]
+      }
+    },
+    "디지털 증거 보존": {
+      "증거 무결성 검증": {
+        "direct": [
+          "증거 무결성",
+          "무결성 검증"
+        ]
+      },
+      "증거 생애주기 관리": {
+        "anchored_digital_forensic": [
+           "증거 생애주기",
+           "증거 관리"
+        ]
+      }
+    },
+    "디지털 증거 수집 및 분석": {
+      "디바이스 데이터 수집": {
+        "direct": [
+          "디바이스 포렌식",
+          "물리적 데이터 수집",
+          "논리적 데이터 수집"
+        ]
+      },
+      "가상화 및 컨테이너 포렌식": {
+        "direct":[
+          "가상화 포렌식"
+        ],
+        "anchored": [
+          "가상머신",
+          "가상화 시스템",
+          "가상화 환경",
+          "도커",
+          "컨테이너",
+          "쿠버네티스"
+        ]
+       }, 
+      "파일시스템 및 운영체제 포렌식": {
+        "direct":[
+          "파일시스템 아티팩트",
+          "운영체제 아티팩트",
+          "os 아티팩트"
+        ],
+        "anchored": [
+          "파일시스템",
+          "fat32",
+          "exfat",
+          "ntfs",
+          "ext4",
+          "hfs",
+          "btrfs",
+          "xfs",
+          "운영체제",
+          "os 메모리"
+        ]
+      },
+      "애플리케이션 및 파일 포렌식": {
+        "direct": [
+          "애플리케이션 아티팩트",
+          "어플리케이션 아티팩트",
+          "앱 아티팩트"
+        ],
+        "anchored": [
+          "애플리케이션",
+          "어플리케이션",
+          "앱",
+          "파일 포맷"
+        ]
+      },
+      "네트워크 포렌식": {
+        "direct": [
+          "네트워크 포렌식",
+          "네트워크 아티팩트"
+        ],
+        "anchored": [
+          "네트워크 패킷",
+          "네트워크 로그",
+          "네트워크 트래픽",
+          "오픈소스 인텔리전스",
+          "오픈 소스 인텔리전스",
+          "osint",
+          "다크웹",
+          "다크넷",
+          "익명 네트워크"
+        ]
+      },
+      "클라우드 포렌식": {
+         "anchored": [
+          "클라우드",
+          "aws",
+          "azure",
+          "gcp"
+        ]
+       },
+      "데이터 통합 분석, 이벤트 재구성 및 보고": {
+        "anchored_digital_forensic": [
+          "데이터 통합 분석",
+          "정규화",
+          "인덱싱",
+          "연관 분석",
+          "타임라인",
+          "이벤트 재구성",
+          "시각화",
+          "보고서"
+        ]
+      }
+    },
+    "공통 기반 기술": {
+      "안티-포렌식 대응": {
+        "direct": [
+          "안티-포렌식",
+          "안티포렌식",
+          "안티 포렌식"
+        ],
+        "anchored": [
+          "암호 해독",
+          "데이터 복구"
+        ],
+        "anchored_digital_forensic": [
+          "우회",
+          "위변조 탐지", 
+          "은닉 탐지",
+          "비익명화"           
+        ]
+      },
+      "포렌식 인프라": {
+        "direct": [
+          "포렌식 인프라"
+        ],
+        "anchored": [  
+          "참조 데이터 세트",
+          "참조 데이터셋",
+          "rds",
+          "데이터 필터링",
+          "도구 검증"    
+        ],
+        "anchored_digital_forensic": [
+          "포렌식 준비도",
+          "포렌식 교육",
+          "역량 체계"
+        ]
+      }
+    },
+    "융합 포렌식": {
+      "침해사고 대응": {
+        "anchored":[
+          "침해사고 대응",
+          "침해 사고 대응",
+          "dfir",
+          "사이버 위협 인텔리전스",
+          "cyber threat intelligence",
+          "cti",
+          "악성코드",
+          "멀웨어",
+          "랜섬웨어",
+          "봇넷",
+          "기술유출",
+          "기술 유출",
+          "개인정보 침해",
+          "저작권 침해"
+        ]
+      },
+      "멀티미디어 포렌식": {
+        "direct": [
+          "멀티미디어 아티팩트"
+        ],
+        "anchored": [
+          "미디어",
+          "사진",
+          "비디오",
+          "오디오",
+          "멀티미디어",
+          "멀티모달",
+          "딥페이크",
+          "csam"
+        ]
+      },
+      "가상자산 포렌식": {
+        "direct": [
+          "가상자산 아티팩트"
+        ],
+        "anchored": [
+          "가상자산",
+          "블록체인",
+          "가상화폐",
+          "디파이",
+          "defi",
+          "온체인",
+          "오프체인"
+        ]
+      },
+      "산업 / 특수 분야 포렌식": {
+        "direct": [
+          "드론 포렌식",
+          "자동차 포렌식",
+          "차량 포렌식"
+        ],
+        "anchored_digital_forensic": [
+          "모빌리티",
+          "드론",
+          "자동차",
+          "차량",
+          "선박",
+          "해양",
+          "로봇",
+          "헬스케어",
+          "산업 제어 시스템",
+          "ics",
+          "항공",
+          "우주"
+        ]
+      },
+      "AI 포렌식": {
+        "direct": [
+          "인공지능 아티팩트",
+          "AI 아티팩트"
+        ],
+        "anchored": [
+          "인공지능",
+          "ai",
+          "언어 모델",
+          "llm"
+        ]
+      }
+    }
+  },
+  "search_config": {
+    "anchor_modes": {
+      "anchored": [
+        "포렌식"
+      ],
+      "anchored_digital_forensic": [
+        "디지털포렌식",
+        "디지털 포렌식"
+      ]
+    },
+    "mode_notes": {
+      "direct": "Search the listed terms directly in TITLE-ABS-KEY.",
+      "anchored": "Search taxonomy terms together with the configured forensic/forensics anchor terms.",
+      "anchored_digital_forensic": "Search high-noise taxonomy terms together with the stricter digital forensic(s) anchor terms."
+    }
+  },
+  "exclude": [
+    "allele",
+    "short tandem repeat",
+    "str profiling",
+    "snp",
+    "autosomal",
+    "y-str",
+    "genotyping",
+    "microhaplotypes",
+    "kinship",
+    "ancestry inference",
+    "assay",
+    "multiplex",
+    "panel",
+    "developmental validation",
+    "spectroscopy",
+    "mass spectrometry",
+    "body fluid",
+    "bloodstain",
+    "skeletal",
+    "human remains",
+    "cadaver",
+    "microbiome",
+    "toxicology",
+    "toxicological",
+    "injury",
+    "odontology",
+    "computed tomography",
+    "wildlife",
+    "fingermarks",
+    "mitochondrial",
+    "trauma",
+    "sexual assault",
+    "species identification",
+    "cartridge",
+    "gunshot",
+    "soft tissue",
+    "latent fingermarks",
+    "sex estimation",
+    "footwear",
+    "superimposition",
+    "pcr",
+    "nucleic acid",
+    "dna recovery",
+    "dna transfer",
+    "dna methylation",
+    "trace dna",
+    "touch dna",
+    "dna profiling",
+    "pathology",
+    "acid",
+    "postmortem interval",
+    "fibre",
+    "fibres",
+    "swabs",
+    "level propositions",
+    "glass",
+    "methylation",
+    "textiles",
+    "saliva",
+    "soil",
+    "cardiac",
+    "given activity",
+    "microbial",
+    "voice comparison",
+    "drowning",
+    "score-based likelihood ratios",
+    "epigenetic",
+    "fire debris",
+    "nanopore",
+    "shoeprints"
+  ]
 }

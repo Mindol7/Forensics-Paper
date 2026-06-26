@@ -1,32 +1,349 @@
 {
-  "include_any": {
-	"Digital forensics": [
-		"Digital evidence identification",
-		"Digital evidence triage",
-		"Device evidence acquisition",
-		"Network data acquisition",
-		"Cloud data acquisition",
-		"Digital evidence preservation",
-		"Virtualization forensics",
-		"Container forensics",
-		"File system forensics",
-		"Operating system forensics",
-		"Application forensics",
-		"File forensics",
-		"Network forensics",
-		"Cloud forensics",
-		"Data aggregation",
-		"Event reconstruction",
-		"Event Reporting",
-		"Anti-forensic countermeasures",
-		"Forensic infrastructure",
-		"Incident response",
-		"Multimedia forensics",
-		"Cryptocurrency forensics",
-		"Virtual assets",
-		"Industry forensics",
-		"AI forensics"
-	]
+  "디지털포렌식": {
+    "디지털 증거 식별 및 분류": {
+      "잠재적 디지털 증거 출처 식별": {
+        "direct": [
+          "digital evidence identification",
+          "identify digital evidence"
+        ],
+        "anchored":[
+          "digital device identification",
+          "identify digital device",
+          "mobile device identification",
+          "identify mobile device",
+          "network asset identification",
+          "identify network asset"
+        ]
+      },
+      "디지털 증거 트리아지": {
+        "direct": [
+          "digital evidence triage"
+        ],
+        "anchored_digital_forensic": [
+          "device prioritisation",
+          "device prioritization",
+          "prioritise device",
+          "prioritize device"
+        ]
+      }
+    },
+    "디지털 증거 보존": {
+      "증거 무결성 검증": {
+        "direct": [
+          "evidence integrity",
+          "integrity verification",
+          "verify integrity"
+        ]
+      },
+      "증거 생애주기 관리": {
+        "anchored_digital_forensic": [
+          "evidence lifecycle",
+          "evidence management"
+        ]
+      }
+    },
+    "디지털 증거 수집 및 분석": {
+      "디바이스 데이터 수집": {
+        "direct": [
+          "device forensics",
+          "device forensic",
+          "physical data collection",
+          "collect physical data",
+          "logical data collection",
+          "collect logical data"
+        ]
+      },
+      "가상화 및 컨테이너 포렌식": {
+        "anchored": [
+          "virtual machine",
+          "virtualized system",
+          "virtualized environment",
+          "docker",
+          "container",
+          "kubernetes"
+        ],
+        "anchored_digital_forensic": [
+          "virtualization"
+        ]
+       }, 
+      "파일시스템 및 운영체제 포렌식": {
+        "direct": [
+          "file system artifact",
+          "operating system artifact",
+          "os artifact"
+        ],
+        "anchored": [
+          "file system",
+          "fat32",
+          "exfat",
+          "ntfs",
+          "ext4",
+          "hfs",
+          "btrfs",
+          "xfs",
+          "operating system",
+          "os memory"
+        ]
+      },
+      "애플리케이션 및 파일 포렌식": {
+        "direct": [
+          "application artifact",
+          "app artifact"
+        ],
+        "anchored": [
+          "application",
+          "app",
+          "file format"
+        ]
+      },
+      "네트워크 포렌식": {
+        "direct":[
+          "network forensics",
+          "network forensic",
+          "network artifact"
+        ],
+        "anchored": [
+          "network packet",
+          "network log",
+          "network traffic",
+          "open source intelligence",
+          "open-source intelligence",
+          "osint",
+          "dark web",
+          "darknet",
+          "anonymous network",
+          "anonymity network"
+        ]
+      },
+      "클라우드 포렌식": {
+        "anchored": [
+          "cloud",
+          "aws",
+          "azure",
+          "gcp"
+         ]
+       },
+      "데이터 통합 분석, 이벤트 재구성 및 보고": {
+        "anchored_digital_forensic": [
+          "integration",
+          "normalization",
+          "indexing",
+          "correlation",
+          "timeline",
+          "event reconstruction",
+          "visualization",
+          "report",
+          "documentation"
+        ]
+      }
+    },
+    "공통 기반 기술": {
+      "안티-포렌식 대응": {
+        "direct": [
+          "anti-forensic",
+          "anti-forensics",
+          "anti forensic",
+          "anti forensics"
+        ],
+        "anchored": [
+          "decryption",
+          "data recovery"
+        ],
+        "anchored_digital_forensic": [          
+          "bypass",          
+          "tampering detection", 
+          "concelalment detection",
+          "deobfuscation"           
+        ]
+      },
+      "포렌식 인프라": {
+        "direct": [
+          "forensic infrastructure"
+        ],
+        "anchored": [
+          "reference data sets",
+          "reference dataset",
+          "rds",
+          "tool validation"       
+        ],
+        "anchored_digital_forensic": [
+          "forensic readiness",
+          "forensic training"
+        ]
+      }
+    },
+    "융합 포렌식": {
+      "침해사고 대응": {
+        "anchored":[
+          "incident response",
+          "dfir",
+          "cyber threat intelligence",
+          "cti",
+          "malware",
+          "ransomware",
+          "botnet",
+          "technology leakage",
+          "personal data breach",
+          "copyright infringement"
+        ]
+      },
+      "멀티미디어 포렌식": {
+        "direct": [
+          "multimedia artifact",
+          "media artifact"
+        ],
+        "anchored": [
+          "media",
+          "multimedia",
+          "multimodal",
+          "video",
+          "audio",
+          "deepfake",
+          "csam",
+          "child sexual abuse imagery",
+          "pornographic content"
+        ]
+      },
+      "가상자산 포렌식": {
+        "direct": [
+          "cryptocurrency artifact",
+          "crypto artifact",
+          "blockchain artifact",
+          "virtual asset artifact"
+        ],
+        "anchored": [
+          "cryptocurrency",
+          "blockchain",
+          "virtual asset",
+          "decentralized finance",
+          "defi",
+          "money laundering",
+          "crypto wallet",
+          "on-chain",
+          "off-chain"
+        ]
+      },
+      "산업 / 특수 분야 포렌식": {
+        "direct": [
+          "drone forensic",
+          "vehicle forensic"
+        ],
+        "anchored_digital_forensic": [
+          "mobility",
+          "drone",
+          "vehicle",
+          "maritime",
+          "robot",
+          "healthcare",
+          "industrial control system",
+          "ics",
+          "aviation",
+          "aerospace"
+        ]
+      },
+      "AI 포렌식": {
+        "direct": [
+          "ai artifact",
+          "artificial intelligence artifact",
+          "llm artifact"
+        ],
+        "anchored": [
+          "artificial intelligence",
+          "ai",
+          "language model",
+          "llm",
+          "chain of thought"
+        ]
+      }
+    }
   },
-  "exclude_any": []
+  "search_config": {
+    "anchor_modes": {
+      "anchored": [
+        "forensic",
+        "forensics"
+      ],
+      "anchored_digital_forensic": [
+        "digital forensic",
+        "digital forensics"
+      ]
+    },
+    "mode_notes": {
+      "direct": "Search the listed terms directly in TITLE-ABS-KEY.",
+      "anchored": "Search taxonomy terms together with the configured forensic/forensics anchor terms.",
+      "anchored_digital_forensic": "Search high-noise taxonomy terms together with the stricter digital forensic(s) anchor terms."
+    }
+  },
+  "exclude": [
+    "allele",
+    "short tandem repeat",
+    "str profiling",
+    "snp",
+    "autosomal",
+    "y-str",
+    "genotyping",
+    "microhaplotypes",
+    "kinship",
+    "ancestry inference",
+    "assay",
+    "multiplex",
+    "panel",
+    "developmental validation",
+    "spectroscopy",
+    "mass spectrometry",
+    "body fluid",
+    "bloodstain",
+    "skeletal",
+    "human remains",
+    "cadaver",
+    "microbiome",
+    "toxicology",
+    "toxicological",
+    "injury",
+    "odontology",
+    "computed tomography",
+    "wildlife",
+    "fingermarks",
+    "mitochondrial",
+    "trauma",
+    "sexual assault",
+    "species identification",
+    "cartridge",
+    "gunshot",
+    "soft tissue",
+    "latent fingermarks",
+    "sex estimation",
+    "footwear",
+    "superimposition",
+    "pcr",
+    "nucleic acid",
+    "dna recovery",
+    "dna transfer",
+    "dna methylation",
+    "trace dna",
+    "touch dna",
+    "dna profiling",
+    "pathology",
+    "acid",
+    "postmortem interval",
+    "fibre",
+    "fibres",
+    "swabs",
+    "level propositions",
+    "glass",
+    "methylation",
+    "textiles",
+    "saliva",
+    "soil",
+    "cardiac",
+    "given activity",
+    "microbial",
+    "voice comparison",
+    "drowning",
+    "score-based likelihood ratios",
+    "epigenetic",
+    "fire debris",
+    "nanopore",
+    "shoeprints"
+  ]
 }

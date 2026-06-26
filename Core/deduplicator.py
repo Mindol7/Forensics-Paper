@@ -48,6 +48,8 @@ def _richness_score(paper: NormalizedPaper) -> int:
     ]
     score = sum(1 for field in fields if field)
     score += len(paper.keywords)
+    score += len(paper.categories)
+    score += len(paper.matched_keywords)
     score += len(paper.matched_queries)
     return score
 
@@ -91,6 +93,18 @@ def _merge_papers(base: NormalizedPaper, other: NormalizedPaper) -> NormalizedPa
         if keyword.casefold() not in seen_keywords:
             base.keywords.append(keyword)
             seen_keywords.add(keyword.casefold())
+
+    seen_categories = {category.casefold() for category in base.categories}
+    for category in other.categories:
+        if category.casefold() not in seen_categories:
+            base.categories.append(category)
+            seen_categories.add(category.casefold())
+
+    seen_matched_keywords = {keyword.casefold() for keyword in base.matched_keywords}
+    for keyword in other.matched_keywords:
+        if keyword.casefold() not in seen_matched_keywords:
+            base.matched_keywords.append(keyword)
+            seen_matched_keywords.add(keyword.casefold())
 
     seen_queries = {query.casefold() for query in base.matched_queries}
     for query in other.matched_queries:

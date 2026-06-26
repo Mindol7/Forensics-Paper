@@ -13,6 +13,12 @@ from Core.deduplicator import deduplicate_papers
 from Core.normalizer import NormalizedPaper, normalize_scopus_papers
 from Core.query_builder import ScopusQuery, build_scopus_queries
 from Exporter.export_excl import export_papers_to_excel
+from Processor.filter import (
+    KeywordFilterConfig,
+    apply_keyword_filter,
+    keyword_matches_text,
+    load_keyword_filter_config,
+)
 from Processor.summarizer import summarize_papers
 from Storage.db import DatabaseManager
 from config import Settings
@@ -83,48 +89,99 @@ def _load_scopus_subject_code_allowlist(path: Path) -> set[str]:
     raise ValueError(f"SCOPUS_SUBJECT_CODE_ALLOWLIST_PATH must be a JSON array: {path}")
 
 
-def _load_search_keywords(path: Path) -> list[str]:
-    if not path.exists():
-        return []
-    with path.open("r", encoding="utf-8") as file:
-        payload = json.load(file)
-    if not isinstance(payload, dict):
-        raise ValueError(f"Keyword filter file must be a JSON object: {path}")
+def _to_scopus_proximity_term(term: str) -> str:
+    words = term.split()
+    if len(words) <= 1:
+        return words[0] if words else ""
+    return " W/16 ".join(words)
 
-    def _normalize_keywords(values: object) -> list[str]:
-        if isinstance(values, dict):
-            flattened: list[str] = []
-            for topic_values in values.values():
-                if isinstance(topic_values, list):
-                    flattened.extend(topic_values)
-            values = flattened
-        if not isinstance(values, list):
-            return []
-        result: list[str] = []
-        seen: set[str] = set()
-        for value in values:
-            if not isinstance(value, str):
-                continue
-            keyword = " ".join(value.strip().split())
-            if not keyword:
-                continue
-            key = keyword.casefold()
-            if key in seen:
-                continue
-            seen.add(key)
-            result.append(keyword)
-        return result
 
-    return _normalize_keywords(payload.get("include_any"))
+def _build_scopus_anchor_clause(anchor_terms: tuple[str, ...]) -> str:
+    segments = [
+        f"({_to_scopus_proximity_term(anchor)})"
+        for anchor in anchor_terms
+        if _to_scopus_proximity_term(anchor)
+    ]
+    return " OR ".join(segments)
+
+
+def _build_scopus_keyword_clauses(config: KeywordFilterConfig) -> list[str]:
+    clauses: list[str] = []
+    seen: set[str] = set()
+    for rule in config.rules:
+        term_clause = _to_scopus_proximity_term(rule.keyword)
+        if not term_clause:
+            continue
+        if rule.anchor_terms:
+            anchor_clause = _build_scopus_anchor_clause(rule.anchor_terms)
+            if not anchor_clause:
+                continue
+            clause = f"({term_clause}) AND ({anchor_clause})"
+        else:
+            clause = f"({term_clause})"
+        key = clause.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        clauses.append(clause)
+    return clauses
 
 
 def _load_scopus_search_keywords(path: Path) -> list[str]:
-    return _load_search_keywords(path)
+    return list(load_keyword_filter_config(path).include_any)
 
 
 def load_keyword_filter_terms(path: Path) -> list[str]:
-    """Load include-any keyword terms used to build search queries."""
-    return _load_search_keywords(path)
+    """Load taxonomy keyword terms used to build search queries."""
+    return _load_scopus_search_keywords(path)
+
+
+def _paper_combined_text(paper: NormalizedPaper) -> str:
+    parts = [
+        paper.title,
+        paper.title_kor,
+        paper.title_eng,
+        paper.title_other,
+        paper.abstract,
+        paper.abstract_kor,
+        paper.abstract_eng,
+        paper.abstract_other,
+        " ".join(paper.keywords),
+    ]
+    return " ".join(part or "" for part in parts).casefold()
+
+
+def _match_extra_terms(paper: NormalizedPaper, extra_terms: list[str] | None) -> list[str]:
+    terms = extra_terms or []
+    if not terms:
+        return []
+    text = _paper_combined_text(paper)
+    text_no_space = "".join(text.split())
+    matches: list[str] = []
+    seen: set[str] = set()
+    for term in terms:
+        cleaned = " ".join(term.strip().split())
+        if not cleaned:
+            continue
+        key = cleaned.casefold()
+        if key in seen:
+            continue
+        if keyword_matches_text(key, text, text_no_space):
+            seen.add(key)
+            matches.append(cleaned)
+    return matches
+
+
+def _apply_extra_term_classification(paper: NormalizedPaper, extra_terms: list[str] | None) -> bool:
+    matches = _match_extra_terms(paper, extra_terms)
+    if not matches:
+        return False
+    paper.categories = ["추가 검색어"]
+    paper.matched_keywords = matches
+    paper.relevance_reasons = [f"extra:{term}" for term in matches]
+    paper.relevance_score = float(len(matches))
+    paper.is_relevant = True
+    return True
 
 
 def _build_scopus_collector(
@@ -300,18 +357,26 @@ def run_scopus_pipeline_yearly(
     log: Callable[[str, str], None],
 ) -> ScopusPipelineResult:
     scopus_collector = _build_scopus_collector(settings=settings, page_size=page_size)
-    keyword_terms = _load_scopus_search_keywords(settings.scopus_keyword_filter_keywords_path)
-    query_terms = keyword_terms + (extra_terms or [])
-    scopus_queries = build_scopus_queries(keyword_terms=query_terms)
+    keyword_config = load_keyword_filter_config(settings.scopus_keyword_filter_keywords_path)
+    keyword_clauses = _build_scopus_keyword_clauses(keyword_config)
+    query_terms = extra_terms or []
+    scopus_queries = build_scopus_queries(
+        keyword_terms=query_terms,
+        keyword_clauses=keyword_clauses,
+    )
     allowed_subject_codes = _load_scopus_subject_code_allowlist(settings.scopus_subject_code_allowlist_path)
     if allowed_subject_codes:
         log("3", f"Scopus subject-code filter ENABLED | allow={len(allowed_subject_codes)}")
     else:
         log("3", "Scopus subject-code filter DISABLED | allowlist empty")
-    if query_terms:
+    if keyword_clauses or query_terms:
         log(
             "3",
-            f"Search keyword query ENABLED | keyword_terms={len(query_terms)}",
+            "Search keyword query ENABLED | "
+            f"rules={len(keyword_config.rules)} "
+            f"categories={len(keyword_config.categories)} "
+            f"clauses={len(keyword_clauses)} "
+            f"extra_terms={len(query_terms)}",
         )
     else:
         log("3", "Search keyword query DISABLED | keyword list empty")
@@ -411,6 +476,28 @@ def run_scopus_pipeline_yearly(
                 f"Subject-code filter END | query_index={index}/{total_queries} "
                 f"kept={len(incremental_batch)} dropped={dropped_by_subject}",
             )
+
+        if keyword_config.rules:
+            categorized_batch: list[NormalizedPaper] = []
+            dropped_by_keyword = 0
+            for paper in incremental_batch:
+                apply_keyword_filter(paper, keyword_config)
+                if paper.is_relevant:
+                    categorized_batch.append(paper)
+                    continue
+                if _apply_extra_term_classification(paper, extra_terms):
+                    categorized_batch.append(paper)
+                    continue
+                dropped_by_keyword += 1
+            incremental_batch = categorized_batch
+            log(
+                "7",
+                f"Keyword category filter END | query_index={index}/{total_queries} "
+                f"kept={len(incremental_batch)} dropped={dropped_by_keyword}",
+            )
+        elif extra_terms:
+            for paper in incremental_batch:
+                _apply_extra_term_classification(paper, extra_terms)
 
         summarized = summarize_papers(incremental_batch)
         relevant_count += len(summarized)
