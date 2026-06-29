@@ -80,6 +80,10 @@ KCI_REG_DATE_MAX = "20991231"
 # already-finished work after a crash/disconnect mid-run.
 KCI_SWEEP_PROGRESS_STATE_KEY = "kci:sweep_progress"
 KCI_PATH1_DONE_STATE_KEY = "kci:path1_done"
+# Cumulative full-corpus build progress (--build-corpus). The corpus is
+# append-only and idempotent (skip already-stored article ids), so this is just
+# an optimization to skip months already fully fetched across repeated runs.
+KCI_CORPUS_PROGRESS_STATE_KEY = "kci:corpus_progress"
 ORG_LEGAL_PREFIXES = ("사단법인", "재단법인", "공익사단법인", "공익재단법인")
 ORG_PAREN_PREFIXES = ("구.", "구 ", "전.", "전 ", "현.", "현 ")
 
@@ -539,6 +543,8 @@ def _enrich_kci_relevant_keywords(
     papers: list[NormalizedPaper],
     *,
     max_workers: int,
+    log_label: str = "",
+    log_every: int = 500,
 ) -> tuple[int, int]:
     """Fetch articleDetail for the (already small) relevant set to fill in the
     keyword list.
@@ -561,6 +567,15 @@ def _enrich_kci_relevant_keywords(
 
     details: dict[str, KciRawPaper | None] = {}
     failed = 0
+    total = len(article_ids)
+    done = 0
+
+    def _note_progress() -> None:
+        # The detail-fetch loop is otherwise silent for minutes (thousands of
+        # serial calls), which looks frozen. Emit a heartbeat so corpus builds
+        # show steady progress.
+        if log_label and (done % log_every == 0 or done == total):
+            _log("3c", f"{log_label} enrich progress | {done}/{total}")
 
     def _fetch(article_id: str) -> tuple[str, KciRawPaper | None]:
         try:
@@ -576,6 +591,8 @@ def _enrich_kci_relevant_keywords(
             details[key] = detail
             if detail is None:
                 failed += 1
+            done += 1
+            _note_progress()
     else:
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
             futures = [executor.submit(_fetch, article_id) for article_id in article_ids]
@@ -584,6 +601,8 @@ def _enrich_kci_relevant_keywords(
                 details[key] = detail
                 if detail is None:
                     failed += 1
+                done += 1
+                _note_progress()
 
     for article_id, paper_list in id_to_papers.items():
         detail = details.get(article_id)
@@ -629,8 +648,8 @@ def _set_kci_classification(
         paper.relevance_reasons = [value for value in reasons if value and value != "*"]
 
 
-def _load_done_months(db: DatabaseManager) -> set[str]:
-    raw = db.get_state(KCI_SWEEP_PROGRESS_STATE_KEY)
+def _load_done_months(db: DatabaseManager, key: str = KCI_SWEEP_PROGRESS_STATE_KEY) -> set[str]:
+    raw = db.get_state(key)
     if not raw:
         return set()
     try:
@@ -640,8 +659,10 @@ def _load_done_months(db: DatabaseManager) -> set[str]:
     return {str(item) for item in data} if isinstance(data, list) else set()
 
 
-def _save_done_months(db: DatabaseManager, done: set[str]) -> None:
-    db.set_state(KCI_SWEEP_PROGRESS_STATE_KEY, json.dumps(sorted(done)))
+def _save_done_months(
+    db: DatabaseManager, done: set[str], key: str = KCI_SWEEP_PROGRESS_STATE_KEY
+) -> None:
+    db.set_state(key, json.dumps(sorted(done)))
 
 
 def _clear_kci_checkpoint(db: DatabaseManager) -> None:
@@ -1125,6 +1146,340 @@ def _run_kci_pipeline(
     )
 
 
+# ---------- Full-corpus mode: collect everything, then match offline ----------
+
+
+def _collect_all_month_papers(
+    collector: KciCollector,
+    year_month: tuple[str, str],
+    *,
+    max_pages: int | None,
+    idx: int,
+    total: int,
+) -> KciCollectOutcome:
+    """Fetch EVERY paper for one month (no keyword filter) for corpus building.
+
+    Like `_sweep_month` but keeps all papers instead of only keyword candidates —
+    the corpus must hold the full national output so it can be re-matched offline.
+    A failed slice is skipped (graceful) so one bad slice doesn't lose the month.
+    """
+    date_from, date_to = year_month
+    prefix = f"  [corpus {idx}/{total}] {date_from}"
+    _log("C1", f"{prefix} START")
+    papers: list[KciRawPaper] = []
+    failures: list[str] = []
+    query = KciQuery(title="*", date_from=date_from, date_to=date_to)
+    try:
+        slices = _build_kci_query_slices(collector, query, label=prefix, log_step="C1")
+    except Exception as exc:
+        _log("C1", f"{prefix} ERROR while probing slices: {exc} (skipping month)")
+        return KciCollectOutcome(papers=papers, failures=[f"{prefix} (probe)"])
+
+    if len(slices) > 1:
+        _log("C1", f"{prefix} split={len(slices)} slices total={sum(s.total_count for s in slices)}")
+    for slice_idx, query_slice in enumerate(slices, start=1):
+        slice_prefix = prefix
+        if len(slices) > 1:
+            slice_prefix = f"{prefix} slice {slice_idx}/{len(slices)} {query_slice.label}"
+        try:
+            for page_items, _total_count in collector.iter_pages(
+                query_slice.query,
+                max_pages=max_pages,
+                on_page=lambda msg, _p=slice_prefix: _log("C1", f"{_p} {msg}"),
+            ):
+                papers.extend(page_items)
+        except Exception as exc:
+            _log("C1", f"{slice_prefix} ERROR after fetched={len(papers)}: {exc} (skipping slice)")
+            failures.append(slice_prefix)
+    _log("C1", f"{prefix} END | fetched={len(papers)} failed_slices={len(failures)}")
+    return KciCollectOutcome(papers=papers, failures=failures)
+
+
+def _build_kci_corpus(
+    *,
+    settings: Settings,
+    db: DatabaseManager,
+    max_pages: int | None,
+    page_size: int | None,
+    sweep_months_override: list[tuple[str, str]] | None,
+) -> PipelineResult:
+    """Phase 1 — fetch the full 5-year corpus (with author keywords), no matching.
+
+    Per month: enumerate every paper via `title=*` sweep, then articleDetail-enrich
+    the ones not already stored, and upsert into `kci_corpus`. Cumulative and
+    idempotent (skips already-stored article ids and already-finished months), so
+    it is meant to be re-run repeatedly until the whole span is collected.
+    """
+    collector = _build_kci_collector(settings, page_size=page_size)
+    effective_max_pages = max_pages or settings.kci_max_pages
+    enrich_workers = _effective_worker_count(max(1, settings.kci_max_workers), cap=KCI_SAFE_MAX_WORKERS)
+
+    monthly_ranges = sweep_months_override or get_kci_monthly_ranges(
+        span_years=settings.kci_recent_years,
+        start_year=settings.kci_start_year,
+        end_year=settings.kci_end_year,
+    )
+    date_from, date_to = monthly_ranges[0][0], monthly_ranges[-1][1]
+
+    done_months = _load_done_months(db, key=KCI_CORPUS_PROGRESS_STATE_KEY)
+    pending = [
+        (idx, ym)
+        for idx, ym in enumerate(monthly_ranges, start=1)
+        if ym[0] not in done_months
+    ]
+    _log(
+        "C0",
+        f"Corpus build START | months={len(monthly_ranges)} ({date_from}~{date_to}) "
+        f"pending={len(pending)} already_done={len(done_months)} "
+        f"enrich_workers={enrich_workers} corpus_total={db.count_corpus()}",
+    )
+
+    fetched_total = 0
+    stored_total = 0
+    failures: list[str] = []
+    for idx, ym in pending:
+        outcome = _collect_all_month_papers(
+            collector, ym, max_pages=effective_max_pages, idx=idx, total=len(monthly_ranges)
+        )
+        failures.extend(outcome.failures)
+        fetched_total += len(outcome.papers)
+
+        if outcome.papers:
+            normalized = normalize_kci_papers(outcome.papers)
+            unique: dict[str, NormalizedPaper] = {}
+            for paper in normalized:
+                if paper.source_id and paper.source_id not in unique:
+                    unique[paper.source_id] = paper
+            existing = db.existing_corpus_ids(list(unique))
+            new_papers = [paper for sid, paper in unique.items() if sid not in existing]
+            detail_ok, detail_failed = _enrich_kci_relevant_keywords(
+                collector, new_papers, max_workers=enrich_workers, log_label=f"  [corpus {ym[0]}]"
+            )
+            for paper in new_papers:
+                paper.raw_payload.pop("_real_keywords", None)
+            stored = db.upsert_corpus_papers(new_papers)
+            stored_total += stored
+            _log(
+                "C2",
+                f"corpus {ym[0]} stored | fetched={len(outcome.papers)} unique={len(unique)} "
+                f"new={len(new_papers)} skipped_existing={len(unique) - len(new_papers)} "
+                f"enriched_ok={detail_ok} enriched_fail={detail_failed} "
+                f"stored={stored} corpus_total={db.count_corpus()}",
+            )
+
+        # Mark a month done only when fully fetched: no slice failures AND no
+        # page cap (a --max-pages run is intentionally partial, so never mark it
+        # done or the corpus would be permanently incomplete for that month).
+        if not outcome.failures and effective_max_pages is None:
+            done_months.add(ym[0])
+            _save_done_months(db, done_months, key=KCI_CORPUS_PROGRESS_STATE_KEY)
+
+    corpus_total = db.count_corpus()
+    months_done = len(done_months)
+    _log(
+        "C9",
+        f"Corpus build END | fetched_this_run={fetched_total} stored_this_run={stored_total} "
+        f"corpus_total={corpus_total} months_done={months_done}/{len(monthly_ranges)} "
+        f"failed_units={len(failures)}",
+    )
+    if months_done < len(monthly_ranges):
+        _log(
+            "C9",
+            "Corpus INCOMPLETE — re-run `--build-corpus` to continue the remaining "
+            f"{len(monthly_ranges) - months_done} month(s).",
+        )
+    if failures:
+        _log("C9", f"WARNING: {len(failures)} unit(s) failed this run (those months will retry next run):")
+        for label in failures:
+            _log("C9", f"  FAILED: {label.strip()}")
+
+    return PipelineResult(
+        raw_count=fetched_total,
+        normalized_count=fetched_total,
+        deduplicated_count=corpus_total,
+        relevant_count=0,
+        stored_count=stored_total,
+        export_path=None,
+    )
+
+
+def _match_kci_corpus(
+    *,
+    settings: Settings,
+    db: DatabaseManager,
+    skip_export: bool,
+) -> PipelineResult:
+    """Phase 2 — classify the stored corpus offline (no network).
+
+    Streams `kci_corpus`, applies year guard -> blacklist -> keyword match
+    (title -> keyword -> abstract, anchor rules, 디지털포렌식학회 fast-path), and
+    upserts the relevant papers into `kci_papers` + Excel. Re-run this whenever
+    the keyword set or blacklist changes — no re-collection needed.
+    """
+    keyword_config = load_keyword_filter_configs(
+        [
+            settings.kci_keyword_filter_keywords_path,
+            settings.kci_keyword_filter_english_keywords_path,
+        ]
+    )
+    blacklist_terms = _load_blacklist(settings.kci_blacklist_path)
+    if not keyword_config.rules:
+        raise ValueError(f"No keyword rules in {settings.kci_keyword_filter_keywords_path}")
+    corpus_total = db.count_corpus()
+    _log(
+        "M0",
+        f"Corpus match START | corpus_total={corpus_total} rules={len(keyword_config.rules)} "
+        f"exclude={len(keyword_config.exclude_any)} blacklist={len(blacklist_terms)} "
+        f"range={settings.kci_start_year}-{settings.kci_end_year}",
+    )
+    if corpus_total == 0:
+        raise ValueError("kci_corpus is empty — run `--build-corpus` first")
+
+    breakdown: dict[str, int] = {f: 0 for f in MATCH_FIELD_ORDER}
+    breakdown["journal"] = 0
+    export_rows: list[NormalizedPaper] = []
+    processed = 0
+    dropped_year = 0
+    dropped_blacklist = 0
+    stored_total = 0
+    chunk_size = 2000
+    buffer: list[NormalizedPaper] = []
+
+    def _flush(papers: list[NormalizedPaper]) -> None:
+        nonlocal stored_total, dropped_year, dropped_blacklist
+        if not papers:
+            return
+        in_range = _filter_kci_year_range(
+            papers, start_year=settings.kci_start_year, end_year=settings.kci_end_year
+        )
+        dropped_year += len(papers) - len(in_range)
+        kept = _filter_blacklisted_kci_papers(in_range, blacklist_terms)
+        dropped_blacklist += len(in_range) - len(kept)
+        # Keywords are already in the corpus, so this is a single pass (no enrich).
+        relevant = _classify_kci_relevance(kept, keyword_config, breakdown)
+        summarized = summarize_papers(relevant)
+        stored_total += db.upsert_papers(summarized)
+        export_rows.extend(summarized)
+
+    for paper in db.iter_corpus_papers(chunk_size=chunk_size):
+        processed += 1
+        buffer.append(paper)
+        if len(buffer) >= chunk_size:
+            _flush(buffer)
+            buffer = []
+            _log("M1", f"match progress | processed={processed} relevant_so_far={len(export_rows)}")
+    _flush(buffer)
+
+    cleaned_db_count = db.delete_kci_papers_outside_year_range(
+        start_year=settings.kci_start_year, end_year=settings.kci_end_year
+    )
+    cleaned_invalid_count = db.delete_kci_papers_with_invalid_match_evidence()
+    breakdown_str = " ".join(f"{f}={c}" for f, c in breakdown.items())
+    _log(
+        "M2",
+        f"Relevance breakdown | relevant={len(export_rows)} ({breakdown_str}) "
+        f"dropped_year={dropped_year} dropped_blacklist={dropped_blacklist} "
+        f"cleaned_db={cleaned_db_count} cleaned_invalid_evidence={cleaned_invalid_count}",
+    )
+
+    export_path: Path | None = None
+    if not skip_export:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        export_path = settings.export_dir / f"kci_papers_{timestamp}.xlsx"
+        export_papers_to_excel(export_rows, export_path)
+        _log("M3", f"Export END | path={export_path} rows={len(export_rows)}")
+
+    db.set_state(settings.state_key_last_success_at, datetime.now(timezone.utc).isoformat())
+    _log(
+        "M9",
+        f"Corpus match END | processed={processed} relevant={len(export_rows)} "
+        f"stored={stored_total} db_total={db.count_papers()} export={export_path}",
+    )
+    return PipelineResult(
+        raw_count=processed,
+        normalized_count=processed,
+        deduplicated_count=processed,
+        relevant_count=len(export_rows),
+        stored_count=stored_total,
+        export_path=export_path,
+    )
+
+
+def _reenrich_kci_corpus(*, settings: Settings, db: DatabaseManager) -> PipelineResult:
+    """Backfill keywords for corpus rows stored without them.
+
+    A network outage (or any articleDetail failure) during `--build-corpus`
+    stores those papers keyword-less, and the month is marked done so a normal
+    re-run skips them. This re-fetches every keyword-less corpus row's detail and
+    fills the recoverable ones; genuinely keyword-less articles stay empty. Safe
+    to re-run; run it AFTER the build finishes (not concurrently — SQLite write
+    contention).
+    """
+    collector = _build_kci_collector(settings, page_size=None)
+    workers = _effective_worker_count(max(1, settings.kci_max_workers), cap=KCI_SAFE_MAX_WORKERS)
+    ids = db.keywordless_corpus_ids()
+    total = len(ids)
+    _log("R0", f"Re-enrich corpus START | keyword-less rows={total} workers={workers}")
+    if total == 0:
+        _log("R9", "Re-enrich corpus END | nothing to do")
+        return PipelineResult(0, 0, 0, 0, 0, None)
+
+    def _fetch(article_id: str) -> tuple[str, KciRawPaper | None]:
+        try:
+            return article_id, collector.fetch_article_detail(article_id)
+        except Exception as exc:
+            _log("R", f"  [detail] {article_id} ERROR: {exc}")
+            return article_id, None
+
+    recovered = 0
+    still_empty = 0
+    failed = 0
+    done = 0
+    pending: dict[str, list[str]] = {}
+
+    def _flush() -> None:
+        nonlocal pending
+        if pending:
+            db.set_corpus_keywords(pending)
+            pending = {}
+
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = [executor.submit(_fetch, article_id) for article_id in ids]
+        for future in as_completed(futures):
+            article_id, detail = future.result()
+            done += 1
+            if detail is None:
+                failed += 1
+            elif detail.keywords:
+                pending[article_id] = list(detail.keywords)
+                recovered += 1
+            else:
+                still_empty += 1
+            if len(pending) >= 1000:
+                _flush()
+            if done % 500 == 0:
+                _log(
+                    "R1",
+                    f"re-enrich progress | {done}/{total} recovered={recovered} "
+                    f"still_empty={still_empty} failed={failed}",
+                )
+    _flush()
+
+    _log(
+        "R9",
+        f"Re-enrich corpus END | checked={total} recovered={recovered} "
+        f"still_empty={still_empty} failed={failed} corpus_total={db.count_corpus()}",
+    )
+    return PipelineResult(
+        raw_count=total,
+        normalized_count=total,
+        deduplicated_count=db.count_corpus(),
+        relevant_count=recovered,
+        stored_count=recovered,
+        export_path=None,
+    )
+
+
 def run_pipeline(
     *,
     settings: Settings | None = None,
@@ -1138,6 +1493,9 @@ def run_pipeline(
     enable_sweep: bool | None = None,
     sweep_months_override: list[tuple[str, str]] | None = None,
     resume: bool = False,
+    build_corpus: bool = False,
+    match_corpus: bool = False,
+    reenrich_corpus: bool = False,
 ) -> PipelineResult:
     _log("0", "Pipeline START")
 
@@ -1152,6 +1510,27 @@ def run_pipeline(
     db = DatabaseManager(settings.database_url)
     db.create_tables()
     _log("2", "Database init END")
+
+    # Full-corpus mode (KCI): collect everything, then match offline. build and
+    # match can run in one invocation or separately across runs.
+    if build_corpus or match_corpus or reenrich_corpus:
+        if source != "kci":
+            raise ValueError("--build-corpus/--match-corpus/--reenrich-corpus are KCI-only")
+        result = PipelineResult(0, 0, 0, 0, 0, None)
+        if build_corpus:
+            result = _build_kci_corpus(
+                settings=settings,
+                db=db,
+                max_pages=max_pages,
+                page_size=page_size,
+                sweep_months_override=sweep_months_override,
+            )
+        if reenrich_corpus:
+            result = _reenrich_kci_corpus(settings=settings, db=db)
+        if match_corpus:
+            result = _match_kci_corpus(settings=settings, db=db, skip_export=skip_export)
+        _log("11", "Pipeline END")
+        return result
 
     if source == "kci":
         return _run_kci_pipeline(
@@ -1257,6 +1636,27 @@ def build_argument_parser() -> argparse.ArgumentParser:
         help="Resume an interrupted KCI run: skip Path 1 / sweep months already "
         "stored in a prior crashed run instead of re-collecting them.",
     )
+    parser.add_argument(
+        "--build-corpus",
+        action="store_true",
+        help="KCI full-corpus mode Phase 1: fetch EVERY paper (with author keywords "
+        "via articleDetail) into kci_corpus, no matching. Cumulative/idempotent — "
+        "re-run repeatedly (optionally with --sweep-month) to finish the 5-year span.",
+    )
+    parser.add_argument(
+        "--match-corpus",
+        action="store_true",
+        help="KCI full-corpus mode Phase 2: classify the stored kci_corpus offline "
+        "(title -> keyword -> abstract + blacklist) into kci_papers + Excel. No "
+        "network; re-run after changing the keyword set/blacklist.",
+    )
+    parser.add_argument(
+        "--reenrich-corpus",
+        action="store_true",
+        help="Backfill keywords for kci_corpus rows stored without them (e.g. "
+        "articleDetail failures during a network outage). Re-fetches keyword-less "
+        "rows and fills the recoverable ones. Run AFTER --build-corpus finishes.",
+    )
     return parser
 
 
@@ -1278,6 +1678,9 @@ def main() -> int:
         enable_sweep=enable_sweep,
         sweep_months_override=args.sweep_month,
         resume=args.resume,
+        build_corpus=args.build_corpus,
+        match_corpus=args.match_corpus,
+        reenrich_corpus=args.reenrich_corpus,
     )
     return 0
 

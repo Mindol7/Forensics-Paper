@@ -11,6 +11,10 @@ env/
 # Environment variables
 .env
 
+# AI Agent
+.codex/
+.agents
+
 # Test / coverage
 .pytest_cache/
 .coverage
@@ -27,3 +31,8 @@ Thumbs.db
 # Results
 kci_pipeline.db
 reports/
+
+# Utility
+tools/
+ref/
+docs/
