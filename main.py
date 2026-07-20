@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -84,6 +85,13 @@ KCI_PATH1_DONE_STATE_KEY = "kci:path1_done"
 # append-only and idempotent (skip already-stored article ids), so this is just
 # an optimization to skip months already fully fetched across repeated runs.
 KCI_CORPUS_PROGRESS_STATE_KEY = "kci:corpus_progress"
+# Highest corpus id already classified into kci_papers. Incremental match only
+# processes ids beyond this and appends; a full match resets it to the corpus max.
+KCI_MATCH_MAX_ID_STATE_KEY = "kci:match_max_id"
+# The most recent months are never marked "done" in the corpus build, so each
+# monthly run re-checks them for late-registered papers (idempotent skip-existing
+# means only genuinely new papers are fetched).
+KCI_CORPUS_RECENT_RECHECK_MONTHS = 2
 ORG_LEGAL_PREFIXES = ("사단법인", "재단법인", "공익사단법인", "공익재단법인")
 ORG_PAREN_PREFIXES = ("구.", "구 ", "전.", "전 ", "현.", "현 ")
 
@@ -1222,15 +1230,19 @@ def _build_kci_corpus(
     date_from, date_to = monthly_ranges[0][0], monthly_ranges[-1][1]
 
     done_months = _load_done_months(db, key=KCI_CORPUS_PROGRESS_STATE_KEY)
+    # The most recent months keep getting new papers registered (KCI indexing
+    # lag), so always re-check them even if a prior run marked them done.
+    recent_months = {ym[0] for ym in monthly_ranges[-KCI_CORPUS_RECENT_RECHECK_MONTHS:]}
     pending = [
         (idx, ym)
         for idx, ym in enumerate(monthly_ranges, start=1)
-        if ym[0] not in done_months
+        if ym[0] not in done_months or ym[0] in recent_months
     ]
     _log(
         "C0",
         f"Corpus build START | months={len(monthly_ranges)} ({date_from}~{date_to}) "
         f"pending={len(pending)} already_done={len(done_months)} "
+        f"recent_recheck={sorted(recent_months)} "
         f"enrich_workers={enrich_workers} corpus_total={db.count_corpus()}",
     )
 
@@ -1267,10 +1279,10 @@ def _build_kci_corpus(
                 f"stored={stored} corpus_total={db.count_corpus()}",
             )
 
-        # Mark a month done only when fully fetched: no slice failures AND no
-        # page cap (a --max-pages run is intentionally partial, so never mark it
-        # done or the corpus would be permanently incomplete for that month).
-        if not outcome.failures and effective_max_pages is None:
+        # Mark a month done only when fully fetched (no slice failures, no page
+        # cap) AND it is not a recent month (those are re-checked every run for
+        # late registrations, so never permanently skipped).
+        if not outcome.failures and effective_max_pages is None and ym[0] not in recent_months:
             done_months.add(ym[0])
             _save_done_months(db, done_months, key=KCI_CORPUS_PROGRESS_STATE_KEY)
 
@@ -1303,18 +1315,70 @@ def _build_kci_corpus(
     )
 
 
+def _match_corpus_segment(
+    database_url: str,
+    keyword_paths: list[Path],
+    blacklist_path: Path,
+    start_year: int,
+    end_year: int,
+    id_lo: int,
+    id_hi: int,
+) -> tuple[list[NormalizedPaper], dict[str, int], int, int, int]:
+    """Worker (runs in its own process): classify one corpus id-segment.
+
+    Opens its own SQLite connection (concurrent readers are fine), streams its
+    id range, applies year guard -> blacklist -> keyword match, and returns only
+    the relevant papers (small) + breakdown/counters. Reading only — the main
+    process does all writing after every worker finishes, so there is no
+    read/write lock contention.
+    """
+    db = DatabaseManager(database_url)
+    keyword_config = load_keyword_filter_configs(keyword_paths)
+    blacklist_terms = _load_blacklist(blacklist_path)
+    breakdown: dict[str, int] = {field_name: 0 for field_name in MATCH_FIELD_ORDER}
+    breakdown["journal"] = 0
+    relevant: list[NormalizedPaper] = []
+    processed = 0
+    dropped_year = 0
+    dropped_blacklist = 0
+    buffer: list[NormalizedPaper] = []
+
+    def _flush(papers: list[NormalizedPaper]) -> None:
+        nonlocal dropped_year, dropped_blacklist
+        if not papers:
+            return
+        in_range = _filter_kci_year_range(papers, start_year=start_year, end_year=end_year)
+        dropped_year += len(papers) - len(in_range)
+        kept = _filter_blacklisted_kci_papers(in_range, blacklist_terms)
+        dropped_blacklist += len(in_range) - len(kept)
+        relevant.extend(_classify_kci_relevance(kept, keyword_config, breakdown))
+
+    for paper in db.iter_corpus_papers(chunk_size=2000, id_min=id_lo, id_max=id_hi):
+        processed += 1
+        buffer.append(paper)
+        if len(buffer) >= 2000:
+            _flush(buffer)
+            buffer = []
+    _flush(buffer)
+    return relevant, breakdown, processed, dropped_year, dropped_blacklist
+
+
 def _match_kci_corpus(
     *,
     settings: Settings,
     db: DatabaseManager,
     skip_export: bool,
+    incremental: bool = False,
 ) -> PipelineResult:
-    """Phase 2 — classify the stored corpus offline (no network).
+    """Phase 2 — classify the stored corpus offline (no network), in parallel.
 
-    Streams `kci_corpus`, applies year guard -> blacklist -> keyword match
-    (title -> keyword -> abstract, anchor rules, 디지털포렌식학회 fast-path), and
-    upserts the relevant papers into `kci_papers` + Excel. Re-run this whenever
-    the keyword set or blacklist changes — no re-collection needed.
+    Full mode (default): clear `kci_papers` and re-classify the entire corpus —
+    use after changing the keyword set/blacklist.
+    Incremental mode (`--incremental`): classify only corpus ids beyond the
+    `kci:match_max_id` checkpoint and APPEND to `kci_papers` — the fast monthly
+    path (keyword-set changes are NOT applied retroactively).
+    Both regenerate the accumulated Excel (`kci_papers_accumulated.xlsx`) from
+    the full `kci_papers` table.
     """
     keyword_config = load_keyword_filter_configs(
         [
@@ -1335,40 +1399,77 @@ def _match_kci_corpus(
     if corpus_total == 0:
         raise ValueError("kci_corpus is empty — run `--build-corpus` first")
 
+    corpus_low, corpus_high = db.corpus_id_bounds()
+    if incremental:
+        # Only classify corpus rows added since the last match; append (don't
+        # clear). match_max_id marks the last classified corpus id.
+        last_matched = int(db.get_state(KCI_MATCH_MAX_ID_STATE_KEY) or 0)
+        low, high = last_matched + 1, corpus_high
+        _log("M0", f"Incremental match | new id range=({last_matched}, {corpus_high}] (append)")
+    else:
+        # Full re-match: kci_papers is fully derived from the corpus, so clear it
+        # first (a tighter keyword set otherwise leaves old false positives).
+        cleared = db.clear_kci_papers()
+        low, high = corpus_low, corpus_high
+        _log("M0", f"Full match | cleared prior kci_papers rows={cleared} (rebuilding), id_range={low}-{high}")
+
+    workers = max(1, min(os.cpu_count() or 1, 8))
+    segments: list[tuple[int, int]] = []
+    if low <= high:
+        span = high - low + 1
+        segment_size = max(1, (span + workers - 1) // workers)
+        start = low
+        while start <= high:
+            segments.append((start, min(start + segment_size - 1, high)))
+            start += segment_size
+    _log("M0", f"Parallel match | workers={workers} segments={len(segments)} id_range={low}-{high}")
+
+    keyword_paths = [
+        settings.kci_keyword_filter_keywords_path,
+        settings.kci_keyword_filter_english_keywords_path,
+    ]
     breakdown: dict[str, int] = {f: 0 for f in MATCH_FIELD_ORDER}
     breakdown["journal"] = 0
-    export_rows: list[NormalizedPaper] = []
+    all_relevant: list[NormalizedPaper] = []
     processed = 0
     dropped_year = 0
     dropped_blacklist = 0
-    stored_total = 0
-    chunk_size = 2000
-    buffer: list[NormalizedPaper] = []
 
-    def _flush(papers: list[NormalizedPaper]) -> None:
-        nonlocal stored_total, dropped_year, dropped_blacklist
-        if not papers:
-            return
-        in_range = _filter_kci_year_range(
-            papers, start_year=settings.kci_start_year, end_year=settings.kci_end_year
-        )
-        dropped_year += len(papers) - len(in_range)
-        kept = _filter_blacklisted_kci_papers(in_range, blacklist_terms)
-        dropped_blacklist += len(in_range) - len(kept)
-        # Keywords are already in the corpus, so this is a single pass (no enrich).
-        relevant = _classify_kci_relevance(kept, keyword_config, breakdown)
-        summarized = summarize_papers(relevant)
-        stored_total += db.upsert_papers(summarized)
-        export_rows.extend(summarized)
+    # Workers only READ (own SQLite connection); the main process writes only
+    # after every worker has finished, so there is no read/write lock contention.
+    with ProcessPoolExecutor(max_workers=workers) as executor:
+        futures = [
+            executor.submit(
+                _match_corpus_segment,
+                settings.database_url,
+                keyword_paths,
+                settings.kci_blacklist_path,
+                settings.kci_start_year,
+                settings.kci_end_year,
+                seg_lo,
+                seg_hi,
+            )
+            for seg_lo, seg_hi in segments
+        ]
+        completed = 0
+        for future in as_completed(futures):
+            seg_relevant, seg_breakdown, seg_processed, seg_dropped_year, seg_dropped_bl = future.result()
+            all_relevant.extend(seg_relevant)
+            for field_name, value in seg_breakdown.items():
+                breakdown[field_name] = breakdown.get(field_name, 0) + value
+            processed += seg_processed
+            dropped_year += seg_dropped_year
+            dropped_blacklist += seg_dropped_bl
+            completed += 1
+            _log(
+                "M1",
+                f"segment done {completed}/{len(segments)} | processed={processed} "
+                f"relevant_so_far={len(all_relevant)}",
+            )
 
-    for paper in db.iter_corpus_papers(chunk_size=chunk_size):
-        processed += 1
-        buffer.append(paper)
-        if len(buffer) >= chunk_size:
-            _flush(buffer)
-            buffer = []
-            _log("M1", f"match progress | processed={processed} relevant_so_far={len(export_rows)}")
-    _flush(buffer)
+    summarized = summarize_papers(all_relevant)
+    stored_total = db.upsert_papers(summarized)
+    export_rows: list[NormalizedPaper] = summarized
 
     cleaned_db_count = db.delete_kci_papers_outside_year_range(
         start_year=settings.kci_start_year, end_year=settings.kci_end_year
@@ -1382,18 +1483,35 @@ def _match_kci_corpus(
         f"cleaned_db={cleaned_db_count} cleaned_invalid_evidence={cleaned_invalid_count}",
     )
 
+    # Advance the incremental baseline to the corpus max so the next
+    # --incremental run only processes rows added after this one (a full
+    # re-match resets it here too).
+    db.set_state(KCI_MATCH_MAX_ID_STATE_KEY, str(corpus_high))
+
+    # Regenerate the accumulated Excel from the full kci_papers table (which
+    # accumulates via incremental append) so it always reflects everything to
+    # date, plus a timestamped snapshot.
+    total_relevant = db.count_papers()
     export_path: Path | None = None
     if not skip_export:
+        accumulated = list(db.iter_kci_papers())
+        accumulated_path = settings.export_dir / "kci_papers_accumulated.xlsx"
+        export_papers_to_excel(accumulated, accumulated_path)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         export_path = settings.export_dir / f"kci_papers_{timestamp}.xlsx"
-        export_papers_to_excel(export_rows, export_path)
-        _log("M3", f"Export END | path={export_path} rows={len(export_rows)}")
+        export_papers_to_excel(accumulated, export_path)
+        _log(
+            "M3",
+            f"Export END | accumulated={accumulated_path} snapshot={export_path} "
+            f"rows={len(accumulated)}",
+        )
 
     db.set_state(settings.state_key_last_success_at, datetime.now(timezone.utc).isoformat())
     _log(
         "M9",
-        f"Corpus match END | processed={processed} relevant={len(export_rows)} "
-        f"stored={stored_total} db_total={db.count_papers()} export={export_path}",
+        f"Corpus match END | mode={'incremental' if incremental else 'full'} "
+        f"processed={processed} new_relevant={len(export_rows)} appended={stored_total} "
+        f"db_total={total_relevant} match_max_id={corpus_high} export={export_path}",
     )
     return PipelineResult(
         raw_count=processed,
@@ -1495,6 +1613,7 @@ def run_pipeline(
     resume: bool = False,
     build_corpus: bool = False,
     match_corpus: bool = False,
+    match_incremental: bool = False,
     reenrich_corpus: bool = False,
 ) -> PipelineResult:
     _log("0", "Pipeline START")
@@ -1528,7 +1647,9 @@ def run_pipeline(
         if reenrich_corpus:
             result = _reenrich_kci_corpus(settings=settings, db=db)
         if match_corpus:
-            result = _match_kci_corpus(settings=settings, db=db, skip_export=skip_export)
+            result = _match_kci_corpus(
+                settings=settings, db=db, skip_export=skip_export, incremental=match_incremental
+            )
         _log("11", "Pipeline END")
         return result
 
@@ -1651,6 +1772,13 @@ def build_argument_parser() -> argparse.ArgumentParser:
         "network; re-run after changing the keyword set/blacklist.",
     )
     parser.add_argument(
+        "--incremental",
+        action="store_true",
+        help="With --match-corpus: classify only corpus rows added since the last "
+        "match (kci:match_max_id) and APPEND to kci_papers — the fast monthly path. "
+        "Keyword-set changes are not applied retroactively (use full --match-corpus).",
+    )
+    parser.add_argument(
         "--reenrich-corpus",
         action="store_true",
         help="Backfill keywords for kci_corpus rows stored without them (e.g. "
@@ -1680,6 +1808,7 @@ def main() -> int:
         resume=args.resume,
         build_corpus=args.build_corpus,
         match_corpus=args.match_corpus,
+        match_incremental=args.incremental,
         reenrich_corpus=args.reenrich_corpus,
     )
     return 0
