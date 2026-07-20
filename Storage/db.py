@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 from typing import Iterable, Iterator
 
-from sqlalchemy import Boolean, Float, Integer, String, Text, create_engine, delete, inspect, or_, select, text
+from sqlalchemy import Boolean, Float, Integer, String, Text, create_engine, delete, func, inspect, or_, select, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from Core.normalizer import NormalizedPaper
@@ -226,6 +226,30 @@ class DatabaseManager:
         with self.session_factory() as session:
             return int(session.query(PaperRecord).count())
 
+    def iter_kci_papers(self, *, chunk_size: int = 2000) -> Iterator[NormalizedPaper]:
+        """Stream all matched KCI rows as NormalizedPaper (for the accumulated
+        Excel export). PaperRecord shares columns with CorpusRecord, so
+        `_record_to_normalized` reconstructs it too. Keyset-paginated; each
+        chunk's session closes before yielding."""
+        last_id = 0
+        while True:
+            with self.session_factory() as session:
+                records = list(
+                    session.scalars(
+                        select(PaperRecord)
+                        .where(PaperRecord.source == "kci")
+                        .where(PaperRecord.id > last_id)
+                        .order_by(PaperRecord.id)
+                        .limit(chunk_size)
+                    )
+                )
+                normalized = [DatabaseManager._record_to_normalized(record) for record in records]
+                if records:
+                    last_id = records[-1].id
+            if not normalized:
+                break
+            yield from normalized
+
     # ---------- Full corpus (kci_corpus) ----------
 
     def existing_corpus_ids(self, source_ids: Iterable[str]) -> set[str]:
@@ -285,25 +309,37 @@ class DatabaseManager:
             session.commit()
         return count
 
-    def iter_corpus_papers(self, *, chunk_size: int = 1000) -> Iterator[NormalizedPaper]:
-        """Stream the whole corpus as detached NormalizedPaper, chunk by chunk.
+    def corpus_id_bounds(self) -> tuple[int, int]:
+        """(min_id, max_id) of the corpus — used to split it into parallel
+        segments for the multi-process match. (0, 0) when empty."""
+        with self.session_factory() as session:
+            low, high = session.execute(
+                select(func.min(CorpusRecord.id), func.max(CorpusRecord.id))
+            ).one()
+        return (int(low) if low is not None else 0, int(high) if high is not None else 0)
+
+    def iter_corpus_papers(
+        self,
+        *,
+        chunk_size: int = 1000,
+        id_min: int | None = None,
+        id_max: int | None = None,
+    ) -> Iterator[NormalizedPaper]:
+        """Stream corpus rows (optionally an id range) as detached NormalizedPaper.
 
         Keyset pagination on the PK: each chunk's read session is opened, fully
         converted to plain dataclasses, then CLOSED before the rows are yielded —
-        so the match phase can write to `kci_papers` without a SQLite read/write
-        lock conflict, and memory stays bounded over a ~600k-row corpus.
+        so writers don't hit a SQLite read/write lock and memory stays bounded.
+        `id_min`/`id_max` restrict to one segment for parallel matching.
         """
-        last_id = 0
+        last_id = (id_min - 1) if id_min is not None else 0
         while True:
             with self.session_factory() as session:
-                records = list(
-                    session.scalars(
-                        select(CorpusRecord)
-                        .where(CorpusRecord.id > last_id)
-                        .order_by(CorpusRecord.id)
-                        .limit(chunk_size)
-                    )
-                )
+                stmt = select(CorpusRecord).where(CorpusRecord.id > last_id)
+                if id_max is not None:
+                    stmt = stmt.where(CorpusRecord.id <= id_max)
+                stmt = stmt.order_by(CorpusRecord.id).limit(chunk_size)
+                records = list(session.scalars(stmt))
                 normalized = [DatabaseManager._record_to_normalized(record) for record in records]
                 if records:
                     last_id = records[-1].id
@@ -358,6 +394,15 @@ class DatabaseManager:
             summary=record.summary,
             raw_payload=_loads(record.raw_payload_json, {}),
         )
+
+    def clear_kci_papers(self) -> int:
+        """Delete all KCI rows from kci_papers so --match-corpus rebuilds the
+        matched set fresh from the corpus (kci_papers is a derived table; without
+        this, tightening the keyword set leaves old false positives behind)."""
+        with self.session_factory() as session:
+            result = session.execute(delete(PaperRecord).where(PaperRecord.source == "kci"))
+            session.commit()
+            return int(result.rowcount or 0)
 
     def delete_kci_papers_outside_year_range(self, *, start_year: int, end_year: int) -> int:
         with self.session_factory() as session:
