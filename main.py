@@ -93,7 +93,6 @@ KCI_MATCH_MAX_ID_STATE_KEY = "kci:match_max_id"
 # means only genuinely new papers are fetched).
 KCI_CORPUS_RECENT_RECHECK_MONTHS = 2
 ORG_LEGAL_PREFIXES = ("사단법인", "재단법인", "공익사단법인", "공익재단법인")
-ORG_PAREN_PREFIXES = ("구.", "구 ", "전.", "전 ", "현.", "현 ")
 
 
 def _log(step: str, message: str) -> None:
@@ -350,57 +349,38 @@ def _load_blacklist(path: Path) -> tuple[str, ...]:
     return tuple(terms)
 
 
-def _simplify_org_name(value: str) -> str:
-    text = value.casefold()
+def _canonical_org_name(value: str) -> str:
+    """Reduce an organization name to the form used for blacklist comparison.
+
+    The same body is spelled differently on either side — "(사)한국OO학회" vs
+    "사단법인 한국OO학회" vs "한국OO학회", with inconsistent spacing — so both the
+    blacklist entry and the KCI publisher/journal name are stripped of legal-form
+    markers, parenthesised notes ("(구.옛이름)", "(since1969)") and punctuation
+    before they are compared. An entry carrying an old name in parentheses
+    therefore matches the current name only, not the old one.
+    """
+    text = re.sub(r"\([^)]*\)|（[^）]*）", " ", value.casefold())
     for prefix in ORG_LEGAL_PREFIXES:
         text = text.replace(prefix.casefold(), "")
-    text = text.replace("(사)", "").replace("（사）", "")
-    text = text.replace("(재)", "").replace("（재）", "")
-    return "".join(ch for ch in text if ch.isalnum() or "가" <= ch <= "힣")
-
-
-def _org_name_variants(value: str) -> set[str]:
-    variants: set[str] = set()
-    cleaned = " ".join(value.strip().split())
-    if not cleaned:
-        return variants
-
-    candidates = {cleaned}
-    candidates.add(" ".join(re.sub(r"\([^)]*\)", " ", cleaned).split()))
-    for match in re.finditer(r"\(([^)]*)\)", cleaned):
-        inner = " ".join(match.group(1).split())
-        for prefix in ORG_PAREN_PREFIXES:
-            if inner.casefold().startswith(prefix.casefold()):
-                inner = inner[len(prefix):].strip()
-                break
-        if inner:
-            candidates.add(inner)
-
-    for candidate in candidates:
-        simplified = _simplify_org_name(candidate)
-        if simplified:
-            variants.add(simplified)
-    return variants
+    return "".join(ch for ch in text if ch.isalnum())
 
 
 def _matches_blacklist_terms(text_parts: list[str | None], blacklist_terms: tuple[str, ...]) -> bool:
-    haystack = " ".join(part or "" for part in text_parts).casefold()
-    if not haystack.strip() or not blacklist_terms:
-        return False
-    haystack_no_space = "".join(haystack.split())
-    haystack_variants: set[str] = set()
-    for part in text_parts:
-        if part:
-            haystack_variants.update(_org_name_variants(part))
+    """True when a publisher/journal name equals a blacklist entry outright.
 
-    for term in blacklist_terms:
-        if keyword_matches_text(term.casefold(), haystack, haystack_no_space):
-            return True
-        for term_variant in _org_name_variants(term):
-            for haystack_variant in haystack_variants:
-                if term_variant in haystack_variant or haystack_variant in term_variant:
-                    return True
-    return False
+    Organization names are proper nouns, so they are compared whole — never as
+    substrings or fragments of one another. Matching fragments previously let
+    the "(사)" of an entry like "(사)한국도시설계학회" stand in as the single
+    syllable "사" and blacklist every publisher containing it (범죄수사연구원,
+    한국형사법학회, ...), silently dropping ~48k corpus papers.
+    """
+    if not blacklist_terms:
+        return False
+    names = {_canonical_org_name(part) for part in text_parts if part}
+    names.discard("")
+    if not names:
+        return False
+    return any(_canonical_org_name(term) in names for term in blacklist_terms)
 
 
 def _is_blacklisted_raw_paper(paper: KciRawPaper, blacklist_terms: tuple[str, ...]) -> bool:
