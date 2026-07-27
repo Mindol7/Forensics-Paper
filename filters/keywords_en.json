@@ -13,6 +13,10 @@
           "identify mobile device",
           "network asset identification",
           "identify network asset"
+        ],
+        "anchored_digital_forensic": [
+          "evidence identification",
+          "identify evidence"
         ]
       },
       "디지털 증거 트리아지": {
@@ -20,6 +24,7 @@
           "digital evidence triage"
         ],
         "anchored_digital_forensic": [
+          "triage",
           "device prioritisation",
           "device prioritization",
           "prioritise device",
@@ -31,14 +36,29 @@
       "증거 무결성 검증": {
         "direct": [
           "evidence integrity",
+          "digital evidence integrity"
+        ],
+        "anchored": [
           "integrity verification",
-          "verify integrity"
+          "verify integrity",
+          "hash verification"
         ]
       },
       "증거 생애주기 관리": {
+        "direct": [
+          "electronic information seizure",
+          "seize electronic information",
+          "digital evidence seizure",
+          "digital evidence search and seizure",
+          "substantial subject of seizure",
+          "subject of seizure"
+        ],
         "anchored_digital_forensic": [
           "evidence lifecycle",
-          "evidence management"
+          "evidence management",
+          "electronic information",
+          "search and seizure",
+          "voluntary submission"
         ]
       }
     },
@@ -47,6 +67,10 @@
         "direct": [
           "device forensics",
           "device forensic",
+          "mobile forensics",
+          "mobile forensic"
+        ],
+        "anchored": [
           "physical data collection",
           "collect physical data",
           "logical data collection",
@@ -54,6 +78,10 @@
         ]
       },
       "가상화 및 컨테이너 포렌식": {
+        "direct": [
+          "virtualization forensics",
+          "virtualisation forensics"
+        ],
         "anchored": [
           "virtual machine",
           "virtualized system",
@@ -68,11 +96,15 @@
        }, 
       "파일시스템 및 운영체제 포렌식": {
         "direct": [
-          "file system artifact",
-          "operating system artifact",
-          "os artifact"
+          "memory forensics",
+          "memory forensic",
+          "file system forensics",
+          "filesystem forensics"
         ],
         "anchored": [
+          "file system artifact",
+          "operating system artifact",
+          "os artifact",
           "file system",
           "fat32",
           "exfat",
@@ -86,11 +118,9 @@
         ]
       },
       "애플리케이션 및 파일 포렌식": {
-        "direct": [
-          "application artifact",
-          "app artifact"
-        ],
         "anchored": [
+          "application artifact",
+          "app artifact",
           "application",
           "app",
           "file format"
@@ -99,10 +129,10 @@
       "네트워크 포렌식": {
         "direct":[
           "network forensics",
-          "network forensic",
-          "network artifact"
+          "network forensic"
         ],
         "anchored": [
+          "network artifact",
           "network packet",
           "network log",
           "network traffic",
@@ -153,12 +183,16 @@
           "bypass",          
           "tampering detection", 
           "concelalment detection",
-          "deobfuscation"           
+          "deobfuscation",
+          "encryption module",
+          "reverse engineering"
         ]
       },
       "포렌식 인프라": {
         "direct": [
-          "forensic infrastructure"
+          "forensic infrastructure",
+          "digital forensics",
+          "digital forensic"
         ],
         "anchored": [
           "reference data sets",
@@ -189,29 +223,35 @@
       },
       "멀티미디어 포렌식": {
         "direct": [
-          "multimedia artifact",
-          "media artifact"
+          "deepfake detection",
+          "deepfake forensics",
+          "image forgery",
+          "video forgery",
+          "copy-move forgery",
+          "forgery detection"
         ],
         "anchored": [
+          "multimedia artifact",
+          "media artifact",
           "media",
           "multimedia",
           "multimodal",
           "video",
           "audio",
+          "forgery",
           "deepfake",
+          "license plate",
           "csam",
           "child sexual abuse imagery",
           "pornographic content"
         ]
       },
       "가상자산 포렌식": {
-        "direct": [
+        "anchored": [
           "cryptocurrency artifact",
           "crypto artifact",
           "blockchain artifact",
-          "virtual asset artifact"
-        ],
-        "anchored": [
+          "virtual asset artifact",
           "cryptocurrency",
           "blockchain",
           "virtual asset",
@@ -242,12 +282,10 @@
         ]
       },
       "AI 포렌식": {
-        "direct": [
+        "anchored": [
           "ai artifact",
           "artificial intelligence artifact",
-          "llm artifact"
-        ],
-        "anchored": [
+          "llm artifact",
           "artificial intelligence",
           "ai",
           "language model",

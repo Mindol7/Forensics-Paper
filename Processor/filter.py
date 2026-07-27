@@ -18,9 +18,74 @@ PROXIMITY_MAX_CHARS: int = 16
 
 _WHITESPACE_RE = re.compile(r"\s+")
 
+# Latin tokens up to this length must match whole words; longer ones need only
+# start on a word boundary. See [[_token_pattern]].
+SHORT_ASCII_MAX_CHARS: int = 4
+
+_ASCII_TOKEN_RE = re.compile(r"^[0-9a-z]+$")
+_TOKEN_PATTERN_CACHE: dict[str, "re.Pattern[str]"] = {}
+
 
 def _strip_whitespace(text: str) -> str:
     return _WHITESPACE_RE.sub("", text)
+
+
+def _is_ascii_token(token_cf: str) -> bool:
+    """True for tokens written purely in Latin letters/digits.
+
+    Korean keywords are excluded on purpose: Korean is written without spaces,
+    so substring matching is exactly what makes '클라우드포렌식' match
+    '클라우드 포렌식'. Only Latin tokens need word-boundary discipline.
+    """
+    return bool(_ASCII_TOKEN_RE.match(token_cf))
+
+
+def _token_pattern(token_cf: str) -> "re.Pattern[str]":
+    """Cached positional pattern for a Latin keyword token.
+
+    Plain substring matching lets a token land anywhere inside a longer word,
+    which is how 'ai' matched det(ai)l and 'logical' matched psycho(logical) —
+    and once V3 proximity pairs two such hits ('ai artifact' across
+    "Detail ... Metallic Artifact") the rule fires on unrelated fields. The
+    boundary requirement is split by length:
+
+      ≤ SHORT_ASCII_MAX_CHARS  both sides, plural 's' tolerated — short tokens
+                               are too generic to survive any affix, so 'app'
+                               matches 'app'/'apps' but never '(app)ear'
+      longer                   left side only, so inflections still match
+                               ('collect' → 'collected') while a token buried at
+                               the end of another word does not (psycho|logical,
+                               block|chain, multi|media)
+    """
+    pattern = _TOKEN_PATTERN_CACHE.get(token_cf)
+    if pattern is None:
+        pattern = re.compile(rf"(?<![0-9a-z]){re.escape(token_cf)}{_token_tail(token_cf)}")
+        _TOKEN_PATTERN_CACHE[token_cf] = pattern
+    return pattern
+
+
+def _token_tail(token_cf: str) -> str:
+    """Trailing constraint for a Latin token — see [[_token_pattern]]."""
+    return r"s?(?![0-9a-z])" if len(token_cf) <= SHORT_ASCII_MAX_CHARS else ""
+
+
+def _phrase_pattern(keyword_cf: str) -> "re.Pattern[str]":
+    """Cached adjacency pattern for an all-Latin keyword, covering V0 and V1.
+
+    Both variants are plain substring tests, which a boundary-checked token
+    cannot rely on: 'logical data collection' is literally inside
+    "psycho(logical data collection)", and collapsing spaces for V1 only widens
+    that. Joining the tokens with `\\s*` accepts the verbatim phrase and the
+    space-collapsed form at once, while the leading boundary keeps the phrase
+    from starting mid-word.
+    """
+    pattern = _TOKEN_PATTERN_CACHE.get(keyword_cf)
+    if pattern is None:
+        tokens = keyword_cf.split()
+        body = r"\s*".join(re.escape(token) for token in tokens)
+        pattern = re.compile(rf"(?<![0-9a-z]){body}{_token_tail(tokens[-1])}")
+        _TOKEN_PATTERN_CACHE[keyword_cf] = pattern
+    return pattern
 
 
 def keyword_matches_text(
@@ -48,20 +113,30 @@ def keyword_matches_text(
     if not keyword_cf or not text_cf:
         return False
 
-    # V0
-    if keyword_cf in text_cf:
-        return True
-
     tokens = keyword_cf.split()
-    keyword_no_space = "".join(tokens)
-    if not keyword_no_space:
+    if not tokens:
         return False
 
-    # V1
+    keyword_no_space = "".join(tokens)
     if text_no_space is None:
         text_no_space = _strip_whitespace(text_cf)
-    if keyword_no_space in text_no_space:
-        return True
+
+    # V0 + V1
+    if all(_is_ascii_token(token) for token in tokens):
+        # One boundary-checked pattern stands in for both: see [[_phrase_pattern]].
+        # Collapsing the text removes exactly the whitespace that pattern spans,
+        # so a hit implies `keyword_no_space in text_no_space` — screening on that
+        # first keeps the leading lookbehind (which defeats the regex engine's
+        # substring skipping) off the ~99% of pairs that cannot match at all.
+        if keyword_no_space in text_no_space and _phrase_pattern(keyword_cf).search(text_cf):
+            return True
+    else:
+        # V0
+        if keyword_cf in text_cf:
+            return True
+        # V1
+        if keyword_no_space in text_no_space:
+            return True
 
     # V3
     if len(tokens) >= 2 and _proximity_match(tokens, text_cf, max_chars=proximity_max_chars):
@@ -98,9 +173,20 @@ def exclude_matches_text(term_cf: str, text_cf: str) -> bool:
 
 def _find_all_positions(text: str, token: str) -> list[tuple[int, int]]:
     """Return all (start, end) positions where `token` occurs in `text`,
-    including overlapping occurrences. Empty list if not found."""
+    including overlapping occurrences. Empty list if not found.
+
+    Latin tokens are located by their boundary pattern — see [[_token_pattern]].
+    Two such matches cannot start at the same offset, so `finditer` loses only
+    overlaps that could never form a distinct proximity hit anyway.
+    """
     if not token:
         return []
+    if _is_ascii_token(token):
+        # The pattern still requires the literal token, so this cheap scan
+        # rejects non-candidates before the regex runs — see [[keyword_matches_text]].
+        if token not in text:
+            return []
+        return [match.span() for match in _token_pattern(token).finditer(text)]
     positions: list[tuple[int, int]] = []
     start = 0
     while True:
@@ -131,7 +217,7 @@ def _proximity_match(
     if not tokens or not text_cf:
         return False
     if len(tokens) == 1:
-        return tokens[0] in text_cf
+        return bool(_find_all_positions(text_cf, tokens[0]))
 
     positions_per_token: list[list[tuple[int, int]]] = []
     for token in tokens:
