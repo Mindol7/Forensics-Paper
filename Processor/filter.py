@@ -7,7 +7,7 @@ import re
 from dataclasses import dataclass
 from itertools import product
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 from Core.normalizer import NormalizedPaper
 
@@ -646,3 +646,281 @@ def filter_papers_by_keywords(
         if keep_irrelevant or enriched.is_relevant:
             result.append(enriched)
     return result
+
+
+# ---------- KCI application-level selection policy ----------
+
+KCI_FORENSIC_SOCIETY_NAMES = ("한국디지털포렌식학회",)
+KCI_FORENSIC_SOCIETY_JOURNALS = ("디지털포렌식연구",)
+KCI_SOCIETY_COLLECTION_REASON = (
+    "제공된 키워드셋은 아니지만, 한국디지털포렌식 학회 논문이기에 수집해옴"
+)
+KCI_SOCIETY_COLLECTION_CATEGORY = "한국디지털포렌식학회"
+KCI_SOCIETY_COLLECTION_KEYWORD = "학회 수집"
+ORG_LEGAL_PREFIXES = (
+    "사단법인",
+    "재단법인",
+    "공익사단법인",
+    "공익재단법인",
+)
+
+
+def _is_kci_society_raw_paper(paper: Any) -> bool:
+    publisher = (getattr(paper, "publisher_name", None) or "").casefold()
+    journal = (getattr(paper, "journal_name", None) or "").casefold()
+    return any(
+        name.casefold() in publisher for name in KCI_FORENSIC_SOCIETY_NAMES
+    ) or any(
+        name.casefold() in journal for name in KCI_FORENSIC_SOCIETY_JOURNALS
+    )
+
+
+def _is_kci_society_paper(paper: NormalizedPaper) -> bool:
+    publisher = (paper.institution_id or "").casefold()
+    journal = (paper.journal_id or "").casefold()
+    return any(
+        name.casefold() in publisher for name in KCI_FORENSIC_SOCIETY_NAMES
+    ) or any(
+        name.casefold() in journal for name in KCI_FORENSIC_SOCIETY_JOURNALS
+    )
+
+
+def load_kci_blacklist(path: Path) -> tuple[str, ...]:
+    """Load unique, non-comment organization names from the blacklist."""
+
+    if not path.exists():
+        return ()
+    terms: list[str] = []
+    seen: set[str] = set()
+    with path.open("r", encoding="utf-8-sig") as file:
+        for line in file:
+            cleaned = " ".join(line.strip().split())
+            if not cleaned or cleaned.startswith("#"):
+                continue
+            key = cleaned.casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            terms.append(cleaned)
+    return tuple(terms)
+
+
+def _canonical_org_name(value: str) -> str:
+    text = re.sub(r"\([^)]*\)|（[^）]*）", " ", value.casefold())
+    for prefix in ORG_LEGAL_PREFIXES:
+        text = text.replace(prefix.casefold(), "")
+    return "".join(character for character in text if character.isalnum())
+
+
+def matches_kci_blacklist(
+    text_parts: Iterable[str | None],
+    blacklist_terms: tuple[str, ...],
+) -> bool:
+    """Match complete canonical organization names, never fragments."""
+
+    if not blacklist_terms:
+        return False
+    names = {_canonical_org_name(part) for part in text_parts if part}
+    names.discard("")
+    if not names:
+        return False
+    return any(
+        _canonical_org_name(term) in names for term in blacklist_terms
+    )
+
+
+def _is_blacklisted_raw_paper(
+    paper: Any,
+    blacklist_terms: tuple[str, ...],
+) -> bool:
+    if _is_kci_society_raw_paper(paper):
+        return False
+    return matches_kci_blacklist(
+        (
+            getattr(paper, "publisher_name", None),
+            getattr(paper, "journal_name", None),
+        ),
+        blacklist_terms,
+    )
+
+
+def _is_blacklisted_kci_paper(
+    paper: NormalizedPaper,
+    blacklist_terms: tuple[str, ...],
+) -> bool:
+    if _is_kci_society_paper(paper):
+        return False
+    return matches_kci_blacklist(
+        (paper.institution_id, paper.journal_id),
+        blacklist_terms,
+    )
+
+
+def filter_blacklisted_kci_papers(
+    papers: Iterable[NormalizedPaper],
+    blacklist_terms: tuple[str, ...],
+) -> list[NormalizedPaper]:
+    rows = list(papers)
+    if not blacklist_terms:
+        return rows
+    return [
+        paper
+        for paper in rows
+        if not _is_blacklisted_kci_paper(paper, blacklist_terms)
+    ]
+
+
+def _matches_terms(text_parts: Iterable[str | None], terms: list[str]) -> bool:
+    haystack = " ".join(part or "" for part in text_parts).casefold()
+    if not haystack.strip() or not terms:
+        return False
+    haystack_no_space = "".join(haystack.split())
+    return any(
+        keyword_matches_text(term, haystack, haystack_no_space)
+        for term in terms
+    )
+
+
+def _matches_exclude_terms(
+    text_parts: Iterable[str | None],
+    terms: list[str],
+) -> bool:
+    haystack = " ".join(part or "" for part in text_parts).casefold()
+    if not haystack.strip() or not terms:
+        return False
+    return any(exclude_matches_text(term, haystack) for term in terms)
+
+
+def filter_kci_sweep_candidates(
+    papers: Iterable[Any],
+    config: KeywordFilterConfig,
+    blacklist_terms: tuple[str, ...],
+) -> list[Any]:
+    """Apply society override, blacklist, then local include/exclude rules."""
+
+    include_terms = [term.casefold() for term in config.include_any]
+    exclude_terms = [term.casefold() for term in config.exclude_any]
+    kept: list[Any] = []
+    for paper in papers:
+        if _is_kci_society_raw_paper(paper):
+            paper.matched_query = KCI_FORENSIC_SOCIETY_NAMES[0]
+            paper.matched_field = "journal"
+            kept.append(paper)
+            continue
+        if _is_blacklisted_raw_paper(paper, blacklist_terms):
+            continue
+        searchable_parts = (
+            getattr(paper, "title_original", None),
+            getattr(paper, "title_english", None),
+            getattr(paper, "title_foreign", None),
+            " ".join(getattr(paper, "keywords", None) or ()),
+            getattr(paper, "abstract_original", None),
+            getattr(paper, "abstract_english", None),
+        )
+        if _matches_exclude_terms(searchable_parts, exclude_terms):
+            continue
+        if _matches_terms(searchable_parts, include_terms):
+            kept.append(paper)
+    return kept
+
+
+def filter_kci_year_range(
+    papers: Iterable[NormalizedPaper],
+    *,
+    start_year: int,
+    end_year: int,
+) -> list[NormalizedPaper]:
+    return [
+        paper
+        for paper in papers
+        if paper.publication_year is not None
+        and start_year <= paper.publication_year <= end_year
+    ]
+
+
+def _set_kci_classification(
+    paper: NormalizedPaper,
+    *,
+    categories: Iterable[str],
+    matched_keywords: Iterable[str],
+    reasons: Iterable[str] | None = None,
+) -> None:
+    paper.categories = [value for value in categories if value and value != "*"]
+    paper.matched_keywords = [
+        value for value in matched_keywords if value and value != "*"
+    ]
+    if reasons is not None:
+        paper.relevance_reasons = [
+            value for value in reasons if value and value != "*"
+        ]
+
+
+def classify_kci_relevance(
+    papers: Iterable[NormalizedPaper],
+    keyword_config: KeywordFilterConfig,
+    breakdown: dict[str, int],
+) -> list[NormalizedPaper]:
+    """Classify locally by field priority plus the KDFS society override."""
+
+    relevant: list[NormalizedPaper] = []
+    for paper in papers:
+        apply_keyword_filter(paper, keyword_config)
+        if paper.is_relevant:
+            if not paper.categories or not paper.matched_keywords:
+                continue
+            relevant.append(paper)
+            for reason in paper.relevance_reasons:
+                if not reason.startswith("matched_in:"):
+                    continue
+                field_name = reason.split(":", 1)[1]
+                if field_name in breakdown:
+                    breakdown[field_name] += 1
+                break
+            continue
+        if not _is_kci_society_paper(paper):
+            continue
+        paper.is_relevant = True
+        paper.relevance_score = 1.0
+        _set_kci_classification(
+            paper,
+            categories=(KCI_SOCIETY_COLLECTION_CATEGORY,),
+            matched_keywords=(KCI_SOCIETY_COLLECTION_KEYWORD,),
+            reasons=(KCI_SOCIETY_COLLECTION_REASON,),
+        )
+        breakdown["journal"] = breakdown.get("journal", 0) + 1
+        relevant.append(paper)
+    return relevant
+
+
+__all__ = [
+    "DEFAULT_ANCHOR_MODES",
+    "EXCLUDE_TERMS",
+    "KCI_FORENSIC_SOCIETY_JOURNALS",
+    "KCI_FORENSIC_SOCIETY_NAMES",
+    "KCI_SOCIETY_COLLECTION_CATEGORY",
+    "KCI_SOCIETY_COLLECTION_KEYWORD",
+    "KCI_SOCIETY_COLLECTION_REASON",
+    "KEYWORD_CONFIG_META_KEYS",
+    "KEYWORD_MATCH_MODES",
+    "KeywordFilterConfig",
+    "KeywordRule",
+    "MATCH_FIELD_ORDER",
+    "PROXIMITY_MAX_CHARS",
+    "SHORT_ASCII_MAX_CHARS",
+    "STRONG_TERMS",
+    "WEAK_TERMS",
+    "apply_keyword_filter",
+    "apply_rule_based_filter",
+    "classify_kci_relevance",
+    "exclude_matches_text",
+    "filter_blacklisted_kci_papers",
+    "filter_digital_forensics_papers",
+    "filter_kci_sweep_candidates",
+    "filter_kci_year_range",
+    "filter_papers_by_keywords",
+    "keyword_matches_text",
+    "load_kci_blacklist",
+    "load_keyword_filter_config",
+    "load_keyword_filter_configs",
+    "matches_kci_blacklist",
+]

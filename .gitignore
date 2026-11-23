@@ -7,9 +7,15 @@ __pycache__/
 .venv/
 venv/
 env/
+.deps/
 
 # Environment variables
 .env
+.semantic-scholar-rate-limit
+.auth/
+*storage-state*.json
+playwright-report/
+test-results/
 
 # AI Agent
 .codex/
@@ -29,12 +35,71 @@ htmlcov/
 Thumbs.db
 
 # Results
+Analyzer/Graph/out/
 kci_pipeline.db
 kci_pipeline.db*
 reports/
+# Canonical PDF artifacts and manifest/state artifacts (generated at runtime)
+Analyzer/Paper/*
+!Analyzer/Paper/.gitkeep
+Analyzer/Manifest/*
+Analyzer/Manifest/.*
+!Analyzer/Manifest/.gitkeep
+# Safe, deterministic source_id ↔ title-PDF mapping used by every consumer.
+!Analyzer/Manifest/paper_files.json
+!Analyzer/Manifest/paper_profiles.json
+# Reviewed Level-3 decisions are source data for the reproducible Excel export.
+!Analyzer/Manifest/Lv3/
+!Analyzer/Manifest/Lv3/*.json
+# KCI reference collector runtime outputs
+Analyzer/Ref/*.xlsx
+Analyzer/Ref/.*.xlsx
+Analyzer/Ref/.cache/
+# KCI Open Access collector runtime outputs
+Analyzer/OA/*.xlsx
+Analyzer/OA/.*.xlsx
+Analyzer/OA/.cache/
+# KCI Special Issue collector runtime outputs
+Analyzer/Special-Issue/*.xlsx
+Analyzer/Special-Issue/.*.xlsx
+Analyzer/Special-Issue/.cache/
+Analyzer/Special-Issue/BibTex/*.bib
+# Legacy artifact location retained for read/reuse compatibility
+Papers/
 
 # Utility
 tools/
 ref/
 docs/
 tmp/
+
+# Claude Code personal settings
+.claude/settings.local.json
+
+# ---------------------------------------------------------------------------
+# Code-only repository: reports, documents and generated/reviewed data stay local.
+*.hwpx
+*.pdf
+*.xlsx
+*.png
+*.db
+*.jsonl
+*.bib
+report/
+web/
+Cost/
+ARCHITECTURE.md
+Analyzer/**/*.json
+Analyzer/**/*.md
+Analyzer/**/*.txt
+Analyzer/**/*.xml
+Analyzer/**/*.ocr
+Analyzer/**/*.zip
+Analyzer/**/*.log
+# ...except the vocabulary files and templates the code reads at run time.
+!Analyzer/LV/Techniques/tech_taxonomy_v5.2.json
+!Analyzer/LV/Techniques/tech_titles_ko.json
+!Analyzer/Tags/tags_taxonomy.json
+!Analyzer/Application/application_aliases.json
+!Analyzer/MD/reference-paper-profile.template.kor.md
+!Analyzer/MD/reference-paper-profile.template.eng.md

@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "description": "KCI API가 학술지 이름 대신 학술지 일련번호(SER…)를 돌려준 논문을 위한 이름표. KCI 논문 상세 페이지의 학술지명·ISSN과 같은 발행기관의 다른 논문으로 확인한 값만 적습니다(2026-09-20 확인).",
+  "journals": {
+    "SER000001908": {"name": "형사법의 신동향", "issn": "1976-5789", "publisher": "대검찰청", "kci_english_title": "Contemporary Review of Criminal Law"},
+    "SER000003109": {"name": "디지털포렌식연구", "issn": "1976-5304", "publisher": "한국디지털포렌식학회", "kci_english_title": "Journal of Digital Forensics"},
+    "SER000003195": {"name": "한국정보통신학회논문지", "issn": "2234-4772", "publisher": "한국정보통신학회", "kci_english_title": "Journal of the Korea Institute Of Information and Communication Engineering"},
+    "SER000005144": {"name": "범죄수사학연구", "issn": "2466-1236", "publisher": "범죄수사연구원", "kci_english_title": "범죄수사학연구"}
+  }
+}

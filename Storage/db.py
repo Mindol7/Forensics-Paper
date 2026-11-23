@@ -1,17 +1,54 @@
-# db.py #
-"""
-    - 논문을 DB 테이블에 저장 -> 기존 데이터와 비교해 update, insert + 마지막 실행 시간 등도 관리.
+"""SQLAlchemy storage boundary for collected metadata and pipeline state.
+
+SQLite is the current runtime backend.  Callers receive this repository through
+``DatabaseManager`` and do not depend on SQLite APIs, so a later MySQL migration
+can keep the collection/filter layers unchanged.  The established paper column
+layout is intentionally preserved.
 """
 
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Iterable, Iterator
 
-from sqlalchemy import Boolean, Float, Integer, String, Text, create_engine, delete, func, inspect, or_, select, text
+from sqlalchemy import (
+    Boolean,
+    Float,
+    Integer,
+    String,
+    Text,
+    create_engine,
+    delete,
+    func,
+    inspect,
+    or_,
+    select,
+    text,
+)
+from sqlalchemy.engine import make_url
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 from Core.normalizer import NormalizedPaper
+
+
+def sqlite_database_path(database_url: str) -> Path:
+    """Resolve the SQLite file behind a SQLAlchemy URL.
+
+    PDF artifact auditing currently uses SQLite's read-only driver directly;
+    keeping URL parsing here prevents application entry points from knowing
+    backend-specific URL syntax.  A future MySQL audit implementation can be
+    selected at this same storage boundary.
+    """
+
+    url = make_url(database_url)
+    if (
+        not url.drivername.startswith("sqlite")
+        or not url.database
+        or url.database == ":memory:"
+    ):
+        raise ValueError("PDF statistics currently require a file-backed SQLite database")
+    return Path(url.database).expanduser().resolve()
 
 
 class Base(DeclarativeBase):
@@ -115,48 +152,28 @@ class PipelineState(Base):
     value: Mapped[str] = mapped_column(Text, nullable=False)
 
 
-class ScopusPaperRecord(Base):
-    __tablename__ = "scopus_papers"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    source: Mapped[str] = mapped_column(String(32), nullable=False, default="scopus")
-    source_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
-    title: Mapped[str | None] = mapped_column(Text, nullable=True)
-    title_kor: Mapped[str | None] = mapped_column(Text, nullable=True)
-    title_eng: Mapped[str | None] = mapped_column(Text, nullable=True)
-    title_other: Mapped[str | None] = mapped_column(Text, nullable=True)
-    doi: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
-    uci: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    url: Mapped[str | None] = mapped_column(Text, nullable=True)
-    abstract: Mapped[str | None] = mapped_column(Text, nullable=True)
-    abstract_kor: Mapped[str | None] = mapped_column(Text, nullable=True)
-    abstract_eng: Mapped[str | None] = mapped_column(Text, nullable=True)
-    abstract_other: Mapped[str | None] = mapped_column(Text, nullable=True)
-    keywords_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
-    authors_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
-    journal_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    institution_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    issue_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    first_page: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    final_page: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    issn: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    eissn: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    subject_code: Mapped[str | None] = mapped_column(Text, nullable=True)
-    is_fulltext: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
-    registered_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    updated_at: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    publication_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    category: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
-    matched_keywords_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
-    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
-    raw_payload_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
-
-
 class DatabaseManager:
+    """Repository facade shared by collectors, filters, and report exporters."""
+
     def __init__(self, database_url: str) -> None:
+        self.database_url = database_url
         self.engine = create_engine(database_url, future=True)
-        self.session_factory = sessionmaker(bind=self.engine, expire_on_commit=False, future=True)
+        self.session_factory = sessionmaker(
+            bind=self.engine,
+            expire_on_commit=False,
+            future=True,
+        )
+
+    @property
+    def dialect_name(self) -> str:
+        """Active SQLAlchemy dialect (``sqlite`` today, ``mysql`` later)."""
+
+        return self.engine.dialect.name
+
+    def close(self) -> None:
+        """Release pooled connections owned by this repository instance."""
+
+        self.engine.dispose()
 
     def create_tables(self) -> None:
         Base.metadata.create_all(self.engine)
@@ -176,13 +193,6 @@ class DatabaseManager:
                     connection.execute(text("ALTER TABLE kci_papers ADD COLUMN category TEXT NOT NULL DEFAULT '[]'"))
                 if "matched_keywords_json" not in columns:
                     connection.execute(text("ALTER TABLE kci_papers ADD COLUMN matched_keywords_json TEXT NOT NULL DEFAULT '[]'"))
-
-            if "scopus_papers" in table_names:
-                columns = {column["name"] for column in inspector.get_columns("scopus_papers")}
-                if "category" not in columns:
-                    connection.execute(text("ALTER TABLE scopus_papers ADD COLUMN category TEXT NOT NULL DEFAULT '[]'"))
-                if "matched_keywords_json" not in columns:
-                    connection.execute(text("ALTER TABLE scopus_papers ADD COLUMN matched_keywords_json TEXT NOT NULL DEFAULT '[]'"))
 
     def get_state(self, key: str) -> str | None:
         with self.session_factory() as session:
@@ -404,9 +414,24 @@ class DatabaseManager:
             session.commit()
             return int(result.rowcount or 0)
 
-    def delete_kci_papers_outside_year_range(self, *, start_year: int, end_year: int) -> int:
+    def delete_kci_papers_outside_year_range(
+        self,
+        *,
+        start_year: int,
+        end_year: int,
+        min_id: int | None = None,
+    ) -> int:
+        """Drop KCI rows outside the publication-year window.
+
+        ``min_id`` restricts the sweep to rows appended after a checkpoint.  The
+        incremental monthly match passes it so that rows which already feed the
+        downstream PDF/Markdown/graph corpus (some pre-date the configured
+        window) are never removed by a hygiene pass that was meant for the
+        rows it just added.
+        """
+
         with self.session_factory() as session:
-            result = session.execute(
+            statement = (
                 delete(PaperRecord)
                 .where(PaperRecord.source == "kci")
                 .where(
@@ -417,8 +442,31 @@ class DatabaseManager:
                     )
                 )
             )
+            if min_id is not None:
+                statement = statement.where(PaperRecord.id >= min_id)
+            result = session.execute(statement)
             session.commit()
             return int(result.rowcount or 0)
+
+    def max_paper_id(self) -> int:
+        """Largest ``kci_papers.id`` (0 when the table is empty)."""
+
+        with self.session_factory() as session:
+            value = session.execute(select(func.max(PaperRecord.id))).scalar_one()
+        return int(value) if value is not None else 0
+
+    def kci_paper_source_ids(self, *, min_id: int | None = None) -> list[str]:
+        """``source_id`` of every KCI row, optionally only rows at/after ``min_id``."""
+
+        with self.session_factory() as session:
+            statement = (
+                select(PaperRecord.source_id)
+                .where(PaperRecord.source == "kci")
+                .order_by(PaperRecord.id)
+            )
+            if min_id is not None:
+                statement = statement.where(PaperRecord.id >= min_id)
+            return list(session.execute(statement).scalars().all())
 
     def delete_kci_papers_with_invalid_match_evidence(self) -> int:
         with self.session_factory() as session:
@@ -438,38 +486,6 @@ class DatabaseManager:
             )
             session.commit()
             return int(result.rowcount or 0)
-
-    def existing_scopus_source_ids(self, source_ids: Iterable[str]) -> set[str]:
-        normalized_ids = [source_id for source_id in source_ids if source_id]
-        if not normalized_ids:
-            return set()
-        with self.session_factory() as session:
-            stmt = select(ScopusPaperRecord.source_id).where(ScopusPaperRecord.source_id.in_(normalized_ids))
-            return set(session.execute(stmt).scalars().all())
-
-    def all_scopus_source_ids(self) -> set[str]:
-        with self.session_factory() as session:
-            stmt = select(ScopusPaperRecord.source_id)
-            return set(session.execute(stmt).scalars().all())
-
-    def upsert_scopus_papers(self, papers: Iterable[NormalizedPaper]) -> int:
-        count = 0
-        with self.session_factory() as session:
-            for paper in papers:
-                count += 1
-                record = session.execute(
-                    select(ScopusPaperRecord).where(ScopusPaperRecord.source_id == paper.source_id)
-                ).scalar_one_or_none()
-                if record is None:
-                    record = ScopusPaperRecord(source="scopus", source_id=paper.source_id)
-                    session.add(record)
-                self._apply_scopus_paper(record, paper)
-            session.commit()
-        return count
-
-    def count_scopus_papers(self) -> int:
-        with self.session_factory() as session:
-            return int(session.query(ScopusPaperRecord).count())
 
     @staticmethod
     def _clean_list(values: Iterable[str]) -> list[str]:
@@ -534,6 +550,32 @@ class DatabaseManager:
         record.summary = paper.summary
         record.raw_payload_json = json.dumps(paper.raw_payload, ensure_ascii=False)
 
+    def update_paper_match_evidence(self, papers: Iterable[NormalizedPaper]) -> int:
+        """Refresh only the blacklist/keyword evidence of existing ``kci_papers`` rows.
+
+        Used by the additive re-filter: rows that earlier runs selected keep
+        every enrichment column (``summary``, keywords, raw payload, ...) and
+        only ``category``/``matched_keywords``/``relevance_reasons``/``is_relevant``
+        follow the current rules.  Rows that do not exist are ignored.
+        """
+
+        updated = 0
+        with self.session_factory() as session:
+            for paper in papers:
+                categories, matched_keywords, reasons = self._clean_kci_classification(paper)
+                record = session.execute(
+                    select(PaperRecord).where(PaperRecord.source_id == paper.source_id)
+                ).scalar_one_or_none()
+                if record is None:
+                    continue
+                record.category = json.dumps(categories, ensure_ascii=False)
+                record.matched_keywords_json = json.dumps(matched_keywords, ensure_ascii=False)
+                record.relevance_reasons_json = json.dumps(reasons, ensure_ascii=False)
+                record.is_relevant = paper.is_relevant
+                updated += 1
+            session.commit()
+        return updated
+
     @staticmethod
     def _apply_corpus_paper(record: CorpusRecord, paper: NormalizedPaper) -> None:
         # Corpus stores every fetched paper, matched or not — no match-evidence
@@ -574,39 +616,5 @@ class DatabaseManager:
             DatabaseManager._clean_list(paper.relevance_reasons), ensure_ascii=False
         )
         record.is_relevant = paper.is_relevant
-        record.summary = paper.summary
-        record.raw_payload_json = json.dumps(paper.raw_payload, ensure_ascii=False)
-
-    @staticmethod
-    def _apply_scopus_paper(record: ScopusPaperRecord, paper: NormalizedPaper) -> None:
-        record.source = "scopus"
-        record.title = paper.title
-        record.title_kor = paper.title_kor
-        record.title_eng = paper.title_eng
-        record.title_other = paper.title_other
-        record.doi = paper.doi
-        record.uci = paper.uci
-        record.url = paper.url
-        record.abstract = paper.abstract
-        record.abstract_kor = paper.abstract_kor
-        record.abstract_eng = paper.abstract_eng
-        record.abstract_other = paper.abstract_other
-        record.keywords_json = json.dumps(paper.keywords, ensure_ascii=False)
-        record.authors_json = json.dumps(paper.authors, ensure_ascii=False)
-        record.journal_id = paper.journal_id
-        record.institution_id = paper.institution_id
-        record.issue_id = paper.issue_id
-        record.first_page = paper.first_page
-        record.final_page = paper.final_page
-        record.page_count = paper.page_count
-        record.issn = paper.issn
-        record.eissn = paper.eissn
-        record.subject_code = paper.subject_code
-        record.is_fulltext = paper.is_fulltext
-        record.registered_at = paper.registered_at
-        record.updated_at = paper.updated_at
-        record.publication_year = paper.publication_year
-        record.category = json.dumps(DatabaseManager._clean_list(paper.categories), ensure_ascii=False)
-        record.matched_keywords_json = json.dumps(DatabaseManager._clean_list(paper.matched_keywords), ensure_ascii=False)
         record.summary = paper.summary
         record.raw_payload_json = json.dumps(paper.raw_payload, ensure_ascii=False)

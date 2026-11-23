@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "routes": [
+    {
+      "provider": "kyobo",
+      "journal": "경희법학"
+    },
+    {
+      "provider": "kyobo",
+      "journal": "형사소송 이론과 실무",
+      "institution": "한국형사소송법학회"
+    },
+    {
+      "provider": "kyobo",
+      "journal": "법학논총",
+      "doi_prefix": "10.38133/"
+    },
+    {
+      "provider": "kyobo",
+      "journal": "한국테러학회보",
+      "institution": "한국테러학회"
+    },
+    {
+      "provider": "kyobo",
+      "journal": "과학기술과 법"
+    },
+    {
+      "provider": "kyobo",
+      "journal": "한국전자통신학회 논문지",
+      "institution": "한국전자통신학회"
+    },
+    {
+      "provider": "kyobo",
+      "journal": "국가법연구",
+      "institution": "사단법인 한국국가법학회"
+    },
+    {
+      "provider": "kyobo",
+      "journal": "형사판례연구",
+      "institution": "한국형사판례연구회"
+    },
+    {
+      "provider": "jams",
+      "journal": "디지털포렌식연구",
+      "institution": "한국디지털포렌식학회"
+    },
+    {
+      "provider": "sciencedirect",
+      "doi_prefix": "10.1016/"
+    }
+  ]
+}

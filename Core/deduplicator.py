@@ -7,10 +7,13 @@
 
 from __future__ import annotations
 
-from typing import Iterable
 import re
+from collections.abc import Callable, Iterable
+from typing import TypeVar
 
 from Core.normalizer import NormalizedPaper
+
+T = TypeVar("T")
 
 # 제목 정규화
 def _title_key(title: str | None) -> str | None:
@@ -137,3 +140,30 @@ def deduplicate_papers(papers: Iterable[NormalizedPaper]) -> list[NormalizedPape
         else:
             deduped[key] = _merge_papers(deduped[key], paper)
     return list(deduped.values())
+
+
+def deduplicate_by_key(items: Iterable[T], key: Callable[[T], str]) -> list[T]:
+    """Return the first item for each non-empty, case-insensitive key.
+
+    PDF candidates and artifact work queues should use their KCI ``source_id``
+    as the key.  Keeping this generic avoids coupling Core to the downloader's
+    transport-specific candidate type.
+    """
+
+    result: list[T] = []
+    seen: set[str] = set()
+    for item in items:
+        normalized = str(key(item) or "").strip().casefold()
+        if not normalized:
+            raise ValueError("deduplication key must not be empty")
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        result.append(item)
+    return result
+
+
+def deduplicate_pdf_candidates(items: Iterable[T]) -> list[T]:
+    """Deduplicate downloader candidates by their authoritative source ID."""
+
+    return deduplicate_by_key(items, lambda item: str(getattr(item, "source_id", "")))
