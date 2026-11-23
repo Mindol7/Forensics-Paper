@@ -1,0 +1,1278 @@
+{
+  "_meta": {
+    "version": "5.2",
+    "status": "active",
+    "candidate_level": "leaf"
+  },
+  "PREP-01": {
+    "title": "Investigation Preparation and Planning",
+    "description": "Defines the investigation objectives, scope, roles, target systems, and procedures in advance, and secures the required legal authority and resources. Use this category when a paper's primary contribution concerns investigation design, legal or organizational preparation, resource allocation, or standard operating procedures rather than an evidence-analysis algorithm. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "PREP-01-01": {
+        "title": "Investigation Planning",
+        "description": {
+          "definition": "Designing investigation scope, targets, resources, evidence-processing order, and reporting based on the objectives and issues of a case",
+          "indicators": [
+            "Defining investigation scope and scenarios",
+            "Allocating roles, tools, staff, and priorities"
+          ],
+          "insufficient_alone": [
+            "Only performing technical analysis of individual evidence",
+            "Planning a literature review, experiment, publication study, or general research project rather than a digital investigation"
+          ]
+        }
+      },
+      "PREP-01-02": {
+        "title": "Securing Legal Authority",
+        "description": {
+          "definition": "Securing and confirming the legal basis and permitted scope for accessing, collecting, and examining digital evidence",
+          "indicators": [
+            "Securing a warrant, consent, or other authority",
+            "Defining jurisdiction and permitted collection scope"
+          ],
+          "insufficient_alone": [
+            "Only evaluating admissibility after collection"
+          ]
+        }
+      }
+    }
+  },
+  "IDEC-01": {
+    "title": "Identification of Potential Digital Evidence Sources",
+    "description": "Identifies devices, accounts, networks, and remote services that may hold case-related evidence to define the scope and priority of preservation and collection. It includes discovering user accounts, authentication traces, relationships, and cloud touchpoints as well as physical devices. Analysis of acquired content and prioritization of evidence are more directly related to examination and triage, respectively. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "IDEC-01-01": {
+        "title": "On-scene Search and Digital Device Detection",
+        "description": {
+          "definition": "Searches for PCs, mobile devices, storage media, CCTV, IoT, wearables, and mobility equipment at a scene",
+          "indicators": [
+            "Searching a scene for digital devices",
+            "Recording device state, connectivity, and context"
+          ],
+          "insufficient_alone": [
+            "Acquiring or examining data inside an already discovered device without searching for and documenting potential digital evidence sources at the scene"
+          ]
+        }
+      },
+      "IDEC-01-02": {
+        "title": "Network Resource Identification",
+        "description": {
+          "definition": "Identifies network assets, access paths, accounts, and authentication traces linked to the target",
+          "indicators": [
+            "Discovering network topology, assets, and services",
+            "Identifying endpoints, accounts, and access paths"
+          ],
+          "insufficient_alone": [
+            "Analyzing acquired packets or logs without identifying network assets, access paths, accounts, or endpoints"
+          ]
+        }
+      }
+    }
+  },
+  "IDEC-02": {
+    "title": "Digital Evidence Triage",
+    "description": "Prioritizes examination under limited time and resources by assessing relevance, volatility, remote-deletion risk, accessibility, and analysis cost. The defining task is deciding which devices and data should be preserved, collected, or examined first during initial response. Work that performs acquisition or detailed content analysis is more directly related to the corresponding category. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "IDEC-02-01": {
+        "title": "Physical Device Prioritization",
+        "description": {
+          "definition": "Prioritizes the seizure and examination of PCs, phones, servers, CCTV, and IoT devices according to relevance, power state, encryption, volatility, and remote-deletion risk",
+          "indicators": [
+            "Prioritizing device-importance scoring and decisions based on live state",
+            "Prioritizing volatility and remote-deletion risk"
+          ],
+          "insufficient_alone": [
+            "Prioritizing files or logs within one device without comparing the seizure or examination priority of physical devices"
+          ]
+        }
+      }
+    }
+  },
+  "PRCP-01": {
+    "title": "Evidence State Preservation",
+    "description": "Records and controls the state, environment, access, communications, and write operations of target devices and data before collection to reduce alteration, damage, or loss. It covers scene preservation, isolation, signal blocking, write protection, and third-party preservation requests. Actual acquisition and post-collection retention or chain-of-custody management may be more directly related to adjacent categories. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "PRCP-01-01": {
+        "title": "On-scene Device Access Control",
+        "description": {
+          "definition": "Restricts and records physical and logical access by people and processes to target devices and media at the scene",
+          "indicators": [
+            "Controlling and recording scene control and evidence identification",
+            "Controlling and recording restriction of user or process access"
+          ],
+          "insufficient_alone": [
+            "Blocking communications without controlling and recording human or process access to the device at the scene"
+          ]
+        }
+      },
+      "PRCP-01-02": {
+        "title": "Live System Isolation",
+        "description": {
+          "definition": "Isolates a live system from networks or external interaction while accounting for volatile data and encryption state, limiting remote manipulation and data changes",
+          "indicators": [
+            "Isolating a live system from networks",
+            "Balancing isolation with volatile-data preservation"
+          ],
+          "insufficient_alone": [
+            "Blocking writes to storage without isolating a live system from networks or remote interaction"
+          ]
+        }
+      },
+      "PRCP-01-03": {
+        "title": "Signal Isolation and Write Blocking",
+        "description": {
+          "definition": "Uses airplane mode, shielding, and hardware or software write blockers to prevent remote signals and minimize changes to original media",
+          "indicators": [
+            "Blocking Faraday shielding and wireless blocking",
+            "Blocking USB or SATA write blockers and verification that source media were not altered"
+          ],
+          "insufficient_alone": [
+            "Network-isolation strategy or forensic-image format work without blocking signals or writes to the original device or medium"
+          ]
+        }
+      },
+      "PRCP-01-04": {
+        "title": "Preservation Request",
+        "description": {
+          "definition": "Requests account freezes, log preservation, or litigation holds from service providers or custodians",
+          "indicators": [
+            "Requesting preservation orders or requests, account freezes",
+            "Requesting provider log retention and emergency preservation of foreign or cloud evidence"
+          ],
+          "insufficient_alone": [
+            "Downloading already preserved data without requesting an account freeze, log hold, or third-party preservation"
+          ]
+        }
+      }
+    }
+  },
+  "COLL-01": {
+    "title": "Device Data Collection",
+    "description": "Acquires data from storage media and digital devices through physical or logical methods while minimizing changes and recording collection and integrity information. It includes acquisition from storage, mobile, IoT, and other devices, with emphasis on acquisition scope, accuracy, and reproducibility. Data in transit or held by remote services is more directly related to network and cloud collection. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "COLL-01-01": {
+        "title": "Forensic Data Triage",
+        "description": {
+          "definition": "Prioritizes volatile memory, communications, location and authentication records, and system or application logs according to relevance, volatility, and collection cost",
+          "indicators": [
+            "Prioritizing selective acquisition and volatile-first collection",
+            "Prioritizing relevance-based acquisition strategies"
+          ],
+          "insufficient_alone": [
+            "Prioritizing physical devices without selecting data inside a device by relevance, volatility, or collection cost"
+          ]
+        }
+      },
+      "COLL-01-02": {
+        "title": "Physical Data Acquisition",
+        "description": {
+          "definition": "Creates a bit-for-bit copy of storage media, including allocated and unallocated space,",
+          "indicators": [
+            "Acquiring disk imaging, bit-stream copying and chip-off",
+            "Acquiring JTAG, low-level acquisition and preservation of unallocated space"
+          ],
+          "insufficient_alone": [
+            "Acquiring only files, folders, backups, or API-visible data without copying raw sectors and unallocated space"
+          ]
+        }
+      },
+      "COLL-01-03": {
+        "title": "Logical Data Acquisition",
+        "description": {
+          "definition": "Uses operating-system or application interfaces to collect selected files, folders, databases, logical volumes, and associated metadata",
+          "indicators": [
+            "Acquiring selected files, folders, or databases",
+            "Collecting backups, exports, or API-visible data"
+          ],
+          "insufficient_alone": [
+            "Copying all raw sectors without acquiring selected data through an operating-system or application interface",
+            "Creating or receiving a volatile-memory dump without acquiring selected persistent files, folders, databases, backups, exports, or logical volumes",
+            "Downloading, opening, loading, or receiving sample files or a research corpus only as experimental input, without implementing or studying an evidence-acquisition procedure"
+          ]
+        }
+      }
+    }
+  },
+  "COLL-02": {
+    "title": "Network and Cloud Data Collection",
+    "description": "Acquires packets, logs, accounts, and service data from networks, open online sources, anonymous networks, and cloud services in a lawful and reproducible manner. It includes methods for acquiring evidence from remote or distributed environments, preserving collection-time state, and handling protocol, API, and provider dependencies. Interpretation of acquired material is more directly related to the matching examination category. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "COLL-02-01": {
+        "title": "Network Packet and Log Collection",
+        "description": {
+          "definition": "Captures wired or wireless traffic or collects device, system, application, router, firewall, and server logs through local agents, exports, or remote transmission",
+          "indicators": [
+            "Capturing packets, flows, or syslog",
+            "Collecting firewall, DNS, or proxy logs with timestamps",
+            "Continuously collecting and preserving device, system, or application logs",
+            "Transmitting collected logs to a remote forensic or monitoring server"
+          ],
+          "insufficient_alone": [
+            "Analyzing previously provided traffic or logs without implementing or performing their collection",
+            "Using, resampling, augmenting, or generating a synthetic or benchmark network dataset without capturing traffic or logs from a network, device, application, or logging source"
+          ]
+        }
+      },
+      "COLL-02-02": {
+        "title": "Open Source Intelligence (OSINT) Collection",
+        "description": {
+          "definition": "Directly retrieves, crawls, downloads, or archives posts, accounts, metadata, advisories, vulnerability records, threat knowledge, malware samples, documents, and other research or evidentiary records from lawfully accessible websites, repositories, search engines, social media, and public databases",
+          "indicators": [
+            "Crawling public websites and social media",
+            "Archiving public data with collection-time evidence",
+            "Retrieving vulnerability, weakness, attack-pattern, defensive-control, or threat-advisory records from public repositories for analysis",
+            "Actively gathering malware samples, documents, software, or other records from multiple public repositories to construct or maintain the paper's analysis corpus"
+          ],
+          "insufficient_alone": [
+            "Analyzing relationships or credibility in existing OSINT without collecting public-source data",
+            "Using a prepackaged public dataset without retrieving, selecting, or integrating public-source records",
+            "Receiving a corpus from a third party or citing its public origin without the authors performing a public-source collection step"
+          ]
+        }
+      },
+      "COLL-02-03": {
+        "title": "Anonymous Network and Dark Web Data Collection",
+        "description": {
+          "definition": "Collects sites, posts, and transaction data from Tor and other anonymous or dark-web services while preserving access paths, timestamps, and collection context",
+          "indicators": [
+            "Crawling Tor services, markets, or forums",
+            "Preserving volatile dark-web content and context"
+          ],
+          "insufficient_alone": [
+            "Attributing actors or transactions in existing dark-web data without collecting and preserving anonymous-service content"
+          ]
+        }
+      },
+      "COLL-02-04": {
+        "title": "Cloud Data Collection",
+        "description": {
+          "definition": "Acquires cloud and SaaS logs, objects, volume snapshots, account activity, and endpoint caches through APIs, exports, and synchronization records",
+          "indicators": [
+            "Acquiring CSP APIs, SaaS exports and snapshots",
+            "Acquiring object versions, audit logs and synchronized endpoint caches",
+            "Using authenticated APIs, exports, or synchronization to retrieve hosted social, messaging, collaboration, storage, or other SaaS account data, posts, messages, feeds, notifications, activity, or metadata"
+          ],
+          "insufficient_alone": [
+            "Analyzing already acquired cloud records without API-, export-, snapshot-, or synchronization-based acquisition"
+          ]
+        }
+      }
+    }
+  },
+  "COLL-03": {
+    "title": "Forensic Image Creation",
+    "description": "Stores acquired data as a forensic image with source structure, metadata, acquisition details, and hashes to support later integrity verification and reproduction. It includes image creation, evidence-format design, compression, splitting, metadata preservation, and tool interoperability. Acquisition mechanics and later hash comparison are more directly related to acquisition and integrity verification, respectively. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "COLL-03-01": {
+        "title": "Forensic Image Format",
+        "description": {
+          "definition": "Stores data, acquisition metadata, and hashes in raw, E01, AFF, or similar forensic formats",
+          "indicators": [
+            "Designing or analyzing headers, segments, and metadata structures in E01/EWF, AFF",
+            "Storing evidence with acquisition information and hashes"
+          ],
+          "insufficient_alone": [
+            "Reading data from a medium without defining or examining a forensic container that stores evidence, acquisition metadata, and integrity values"
+          ]
+        }
+      }
+    }
+  },
+  "PSCP-01": {
+    "title": "Evidence Storage and Chain of Custody",
+    "description": "Continuously records the receipt, transfer, packaging, transport, access, storage, and disposal of evidence so that its identity and integrity can be demonstrated. It includes chain of custody, evidence lifecycle, transfer and access auditing, and long-term preservation policy. The focus is post-collection continuity rather than scene preservation or analytical algorithms. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "PSCP-01-01": {
+        "title": "Evidence Integrity Verification",
+        "description": {
+          "definition": "Compares cryptographic hashes calculated at collection and later stages and checks image or file consistency to detect changes",
+          "indicators": [
+            "Verifying hashes, digital signatures and Merkle trees",
+            "Verifying blockchain-backed integrity records"
+          ],
+          "insufficient_alone": [
+            "Detecting content forgery without comparing integrity values across collection and later processing stages"
+          ]
+        }
+      },
+      "PSCP-01-02": {
+        "title": "Physical Storage Environment and Media Management",
+        "description": {
+          "definition": "Protects evidence media from temperature, humidity, shock, and electromagnetic effects and manages seals, access controls, logs, and backups",
+          "indicators": [
+            "Managing evidence-vault design, seals and access control",
+            "Managing environmental monitoring, media degradation"
+          ],
+          "insufficient_alone": [
+            "Managing logical permissions or retention schedules without controlling media storage, seals, environment, or degradation"
+          ]
+        }
+      },
+      "PSCP-01-03": {
+        "title": "Retention Period and Legal Requirement Management",
+        "description": {
+          "definition": "Manages retention periods, access permissions, and return or deletion conditions according to applicable law, warrants, policy, and case status",
+          "indicators": [
+            "Managing retention schedules, legal holds and return or deletion after case closure",
+            "Managing data-minimization retention and jurisdiction-specific obligations"
+          ],
+          "insufficient_alone": [
+            "Requesting emergency third-party preservation without managing retention, return, or deletion requirements"
+          ]
+        }
+      },
+      "PSCP-01-04": {
+        "title": "Disposal Management",
+        "description": {
+          "definition": "Irrecoverably deletes evidence and copies or destroys media through an approved process after retention duties end, recording the target, method, and time",
+          "indicators": [
+            "Applying secure deletion, crypto-erasure, or degaussing",
+            "Verifying and recording physical destruction"
+          ],
+          "insufficient_alone": [
+            "Recovering incident-deleted data without securely deleting or destroying evidence after retention duties end"
+          ]
+        }
+      }
+    }
+  },
+  "EXAM-01": {
+    "title": "Forensic Data Preprocessing",
+    "description": "Normalizes and indexes heterogeneous data and reduces duplicate or irrelevant material to prepare it for consistent search and correlation. It includes pre-parsing preparation, common-schema transformation, indexing, deduplication, and relevance filtering. The focus is enabling downstream analysis rather than acquiring sources or interpreting event meaning. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "EXAM-01-01": {
+        "title": "Data Normalization and Indexing",
+        "description": {
+          "definition": "Converts times, identifiers, fields, and encodings from diverse investigative files, logs, and databases into common forms and builds searchable indexes",
+          "indicators": [
+            "Mapping heterogeneous fields and schemas",
+            "Normalizing timestamps and building search indexes"
+          ],
+          "insufficient_alone": [
+            "Interpreting an existing chronology without normalizing heterogeneous times, identifiers, fields, or encodings",
+            "Generic machine-learning feature scaling, vectorization, tokenization, embedding, or train-test preprocessing without normalizing heterogeneous investigative evidence sources or building a forensic search index"
+          ]
+        }
+      },
+      "EXAM-01-02": {
+        "title": "Data Filtering and Reduction",
+        "description": {
+          "definition": "Uses hash sets, file types, time ranges, keywords, and case relevance to exclude known, duplicate, or irrelevant data and select evidence for priority review",
+          "indicators": [
+            "Filtering known files, duplicates, and hash matches",
+            "Selecting by keyword, time, type, or relevance",
+            "Applying regex, keyword lists, or suspicious-event rules to a forensic timeline or evidence collection and returning only matched case records"
+          ],
+          "insufficient_alone": [
+            "Prioritizing physical devices without filtering duplicate, known, irrelevant, or out-of-scope data",
+            "Screening or excluding publications in a literature review, or generic experimental preprocessing and train-test selection not performed on investigative evidence or case data"
+          ]
+        }
+      }
+    }
+  },
+  "EXAM-02": {
+    "title": "Virtualization and Container Forensics",
+    "description": "Examines images, configurations, logs, and execution traces from hypervisors, virtual machines, and containers to determine state and activity in virtual environments. It includes analysis of layers, snapshots, volatile workloads, and host-guest relationships specific to virtual environments. Ordinary operating-system or cloud-service logs are more directly related to their corresponding categories. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "EXAM-02-01": {
+        "title": "Virtualization System Examination",
+        "description": {
+          "definition": "Examines virtual disks, snapshots, hypervisor logs, memory, and network traces to determine virtual-machine configuration, execution state, and user activity",
+          "indicators": [
+            "Examining VMware, Hyper-V and KVM",
+            "Examining VMDK, VHD and QCOW"
+          ],
+          "insufficient_alone": [
+            "Examining only a trusted execution environment without virtual-machine configuration, state, or activity artifacts"
+          ]
+        }
+      },
+      "EXAM-02-02": {
+        "title": "Container System Examination",
+        "description": {
+          "definition": "Examines container images and layers, runtime configuration, orchestration logs, and volatile workloads",
+          "indicators": [
+            "Examining container images, layers, and filesystems",
+            "Analyzing runtime, pod, namespace, and orchestration logs"
+          ],
+          "insufficient_alone": [
+            "Analyzing cloud account logs without examining container images, layers, runtime state, or orchestration records"
+          ]
+        }
+      }
+    }
+  },
+  "EXAM-03": {
+    "title": "File System and Operating System Forensics",
+    "description": "Examines partitions, volumes, file systems, and persistent or volatile operating-system artifacts to reconstruct storage structure, system state, and user activity. It covers system-level traces left by storage layers and operating systems, including file placement, execution, access, and memory state. Application-specific internal data is more directly related to Application Forensics. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "EXAM-03-01": {
+        "title": "Partition and Volume Examination",
+        "description": {
+          "definition": "Analyzes partition tables, volume metadata, logical or encrypted volumes, and unallocated space",
+          "indicators": [
+            "Analyzing MBR, GPT and LVM",
+            "Analyzing RAID, APFS containers and encrypted volumes"
+          ],
+          "insufficient_alone": [
+            "Interpreting file metadata without examining partition tables, volume metadata, encryption layers, or storage layout"
+          ]
+        }
+      },
+      "EXAM-03-02": {
+        "title": "File System Examination",
+        "description": {
+          "definition": "Analyzes metadata, directories, allocation records, journals, and timestamps in NTFS, APFS, ext, and other file systems",
+          "indicators": [
+            "Analyzing MFT, journals and inodes",
+            "Analyzing catalogs, allocation bitmaps and deleted entries"
+          ],
+          "insufficient_alone": [
+            "Parsing a document or media format without examining filesystem allocation, directory, journal, or timestamp structures"
+          ]
+        }
+      },
+      "EXAM-03-03": {
+        "title": "Operating System Artifact Examination",
+        "description": {
+          "definition": "Analyzes registry data, event logs, accounts, authentication records, and execution or access traces",
+          "indicators": [
+            "Examining Windows Registry, Event Logs and Prefetch and LNK",
+            "Examining macOS plist and Unified Logs and Linux journals",
+            "Analyzing operating-system process, system-call, kernel, file-I/O, account, authentication, execution, or access-event traces"
+          ],
+          "insufficient_alone": [
+            "Analyzing only an application's private database or cache without examining operating-system artifacts"
+          ]
+        }
+      },
+      "EXAM-03-04": {
+        "title": "OS-level Memory Examination",
+        "description": {
+          "definition": "Extracts processes, modules, network connections, cryptographic keys, and live data from RAM images to examine operating-system state at acquisition time",
+          "indicators": [
+            "Examining memory forensics, process and kernel-object enumeration",
+            "Examining modules, sockets and credentials"
+          ],
+          "insufficient_alone": [
+            "Extracting one application's sessions or content without examining system-wide processes, kernel objects, or connections"
+          ]
+        }
+      }
+    }
+  },
+  "EXAM-04": {
+    "title": "Application and File Forensics",
+    "description": "Examines application storage and memory and the internal structures of documents, media, and databases to determine user actions and content meaning. It covers persistent and volatile data created by user applications and the semantic structures of individual file formats. Generic OS artifacts and storage structures are more directly related to File-System and OS Forensics. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "EXAM-04-01": {
+        "title": "Application Artifact Examination",
+        "description": {
+          "definition": "Directly extracts, parses, or examines application-specific persistent databases, preferences, configurations, caches, histories, logs, and file structures stored by an application on desktop, mobile, cloud-client, vehicle, IoT, or embedded platforms",
+          "indicators": [
+            "Examining browser history, messenger databases and email stores",
+            "Examining cloud-client caches, mobile sandboxes",
+            "Parsing infotainment, IoT, or embedded-application SQLite databases, settings, logs, caches, and related files"
+          ],
+          "insufficient_alone": [
+            "Analyzing only memory-resident data without examining the application's persistent storage artifacts",
+            "Collecting system or device logs that merely contain application execution events",
+            "Processing generic timeline events that mention applications without parsing application-owned storage",
+            "Providing a framework capable of collecting arbitrary application data without examining application-specific artifacts",
+            "Using or mentioning an application only as part of a research scenario"
+          ]
+        }
+      },
+      "EXAM-04-02": {
+        "title": "Application-level Memory Examination",
+        "description": {
+          "definition": "Extracts sessions, inputs, decrypted content, keys, and temporary data from application process memory to examine live application state",
+          "indicators": [
+            "Examining heaps, stacks and session tokens",
+            "Examining decrypted messages, in-memory databases"
+          ],
+          "insufficient_alone": [
+            "Examining only kernel or system-wide memory without extracting state from a specific application process"
+          ]
+        }
+      },
+      "EXAM-04-03": {
+        "title": "File Storage Format Examination",
+        "description": {
+          "definition": "Parses headers, metadata, and internal objects in documents, archives, images, video, and databases to examine content and creation or modification traces",
+          "indicators": [
+            "Parsing internal headers, fields, records and object relationships",
+            "Reverse-engineering proprietary storage structures in documents, backups, archives, databases, or media containers",
+            "Extracting embedded objects and metadata according to container structure",
+            "Interpreting or recovering damaged files from their internal format structures"
+          ],
+          "insufficient_alone": [
+            "Only viewing or searching file content or browsing files and directories without analyzing an internal storage format"
+          ]
+        }
+      }
+    }
+  },
+  "EXAM-05": {
+    "title": "Network and Cloud Forensics",
+    "description": "Correlates packets, device logs, open-source information, dark-web data, and cloud records to reconstruct communications, access, account activity, and remote-service actions. It includes deriving behavior and incident context from remote communications and service records. If acquisition is the primary contribution, use the corresponding network or cloud collection category. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "EXAM-05-01": {
+        "title": "Network Packet and Log Examination",
+        "description": {
+          "definition": "Correlates captured packets and network-device or server logs over time to analyze sessions, access paths, parties, data movement, and anomalous activity",
+          "indicators": [
+            "Reconstructing protocols, flows, and sessions",
+            "Correlating DNS, HTTP, TLS, and server logs"
+          ],
+          "insufficient_alone": [
+            "Studying packet-capture devices or log acquisition without reconstructing sessions, access paths, or network activity"
+          ]
+        }
+      },
+      "EXAM-05-02": {
+        "title": "OSINT Examination",
+        "description": {
+          "definition": "Retrieves for substantive interpretation, validates, filters, links, enriches, queries, or correlates accounts, posts, relationships, metadata, advisories, vulnerabilities, weaknesses, attack patterns, defensive controls, and other records from open websites and public databases",
+          "indicators": [
+            "Linking public accounts to people or entities",
+            "Validating posts, locations, relationships, and timelines",
+            "Correlating vulnerability, weakness, attack-pattern, defensive-control, and public threat records with assets, events, or incident entities",
+            "Constructing or querying CVE-CWE-CAPEC, ATT&CK, IoC, advisory, or defensive-control relations from public sources and applying the resulting links or paths to security analysis",
+            "Building and querying a local knowledge base that integrates public vulnerability or threat records and applies their descriptions, severity, weakness, exploit, consequence, or mitigation meaning to individual assessments",
+            "Classifying or interpreting public threat-feed, phishing-site, exploit, or advisory records by threat type, campaign behavior, hosting pattern, technique, affected target, or security meaning"
+          ],
+          "insufficient_alone": [
+            "Developing crawlers or collection preservation without validating or correlating the collected public information",
+            "Importing public identifiers as dataset labels or model features without examining, validating, linking, enriching, or interpreting their public-source records",
+            "Nearest-neighbor retrieval from a private training corpus when the retrieved records are not public-source intelligence and their threat meaning is not interpreted"
+          ]
+        }
+      },
+      "EXAM-05-03": {
+        "title": "Anonymous Network and Dark Web Data Examination",
+        "description": {
+          "definition": "Analyzes posts, accounts, transactions, and cryptocurrency addresses from anonymous networks and the dark web to link activity patterns with other intelligence or evidence",
+          "indicators": [
+            "Profiling dark-web actors, markets, and forums",
+            "Linking aliases, PGP keys, wallets, and activity times"
+          ],
+          "insufficient_alone": [
+            "Using Tor or the dark web only as a collection channel without examining accounts, posts, transactions, or activity relationships"
+          ]
+        }
+      },
+      "EXAM-05-04": {
+        "title": "Cloud Data Examination",
+        "description": {
+          "definition": "Analyzes cloud logs, objects and versions, volumes, account permissions, and API activity",
+          "indicators": [
+            "Reconstructing cloud audit trails, IAM and object access and sharing",
+            "Reconstructing API calls, multi-tenant attribution",
+            "Analyzing hosted SaaS account, post, message, feed, notification, deletion, sharing, permission, or API-response behavior after remote acquisition"
+          ],
+          "insufficient_alone": [
+            "Using cloud acquisition APIs or snapshots without analyzing acquired records for actions, changes, sharing, or relationships"
+          ]
+        }
+      }
+    }
+  },
+  "ANYS-01": {
+    "title": "Evidence Correlation and Case Reconstruction",
+    "description": "Correlates evidence across time, people, accounts, devices, and content, then analyzes relationships and event order to reconstruct the overall course of an incident. It includes research that fuses multiple analytical results into an incident-level explanation. Cross-source correlation, temporal and relational models, and hypothesis testing are more central than parsing individual files or logs. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "ANYS-01-01": {
+        "title": "Relevant Content Analysis",
+        "description": {
+          "definition": "Uses keywords, similarity, patterns, semantics, and context to find and connect case-relevant documents, messages, media, and other content in large datasets",
+          "indicators": [
+            "Searching content by semantics, similarity, or patterns",
+            "Extracting entities and clustering relevant content",
+            "Searching a forensic timeline, log corpus, document set, messages, or media with case keywords, regex patterns, semantic queries, or suspicious-event rules to return investigator-relevant records"
+          ],
+          "insufficient_alone": [
+            "Building a search index without using meaning, similarity, patterns, or context to find case-relevant content",
+            "Detecting anomalous nodes, classifying attacks, or extracting CTI entities and relations without searching, selecting, or connecting evidentiary documents, messages, media, or human-readable content for a case",
+            "Retrieval-augmented generation, nearest-neighbor lookup, or similarity search used only to improve a prediction model, vulnerability assessment, or research benchmark rather than to find case-relevant evidentiary content"
+          ]
+        }
+      },
+      "ANYS-01-02": {
+        "title": "Integrated Timeline Analysis",
+        "description": {
+          "definition": "Corrects time zones and clock offsets across devices, services, and logs, then places events on a common timeline to analyze sequence and gaps",
+          "indicators": [
+            "Building a cross-source super timeline",
+            "Correcting clock skew and timestamp provenance"
+          ],
+          "insufficient_alone": [
+            "Extracting timestamps from a single artifact without correcting clock differences and integrating events from multiple sources on a common timeline"
+          ]
+        }
+      },
+      "ANYS-01-03": {
+        "title": "Multi-dimensional Relationship Analysis",
+        "description": {
+          "definition": "Derives case-, incident-, or security-assessment-relevant explicit links among evidentiary and security entities such as people, accounts, hosts, assets, vulnerabilities, attack patterns, defensive controls, locations, transactions, communications, events, artifacts, and incidents to support case-level correlation, security-assessment correlation, attack-path analysis, or reconstruction",
+          "indicators": [
+            "Linking evidentiary entities through link analysis, knowledge graphs, or entity resolution",
+            "Deriving communication, transaction, artifact, identity, or incident relationships for an investigation",
+            "Correlating entities across evidence sources to reveal case-relevant connections",
+            "Deriving links among event, log, flow, action, or attack-stage records to identify coordinated or multi-stage incident behavior",
+            "Correlating host, identity, event, time, or infrastructure records into explicit incident relationships, even when those relationships also support detection",
+            "Linking assets, vulnerabilities, weaknesses, attack patterns, controls, and topology, then deriving security relationships or attack paths from those explicit links",
+            "Converting measured similarity among malware samples, artifacts, or incidents into explicit links that reveal families, variants, provenance, or coordinated behavior"
+          ],
+          "insufficient_alone": [
+            "Searching or listing items from a single source without modeling relationships among evidentiary entities",
+            "Using graph topology, graph neural networks, message passing, mathematical interaction models, or computational dependencies only as a predictive or optimization method without deriving case-level relationships among evidence, entities, or incidents",
+            "A detection objective alone; the method must output, infer, or materially exploit explicit relationships among incident evidence, entities, events, actions, or stages",
+            "Describing how components of a generic reference architecture interact, exchange data, or form a workflow without deriving relationships among actual or reviewed security evidence, entities, events, or incidents"
+          ]
+        }
+      },
+      "ANYS-01-04": {
+        "title": "Event Reconstruction",
+        "description": {
+          "definition": "Combines analyzed events and temporal or causal relationships to derive a multi-step incident sequence, attack path, actions, actors, or circumstances, with optional evaluation of conflicts and uncertainty",
+          "indicators": [
+            "Combining events from multiple sources into an incident sequence linking actions, actors and outcomes",
+            "Testing competing hypotheses or possible incident paths against observed evidence",
+            "Resolving conflicting records, missing intervals and temporal uncertainty to reconstruct the incident",
+            "Integrating analytical findings to explain who performed which actions and how",
+            "Deriving a multi-step attack sequence or path from explicitly linked event, host, identity, time, and infrastructure records",
+            "Using multi-hop event relations, causal links, or attack-graph paths to infer an incident sequence, even when the underlying records originated from one dataset or collection system",
+            "Structurally synthesizing a recurring multi-stage attack lifecycle and mapping actions, observables, or detection features to its successive stages across reviewed studies"
+          ],
+          "insufficient_alone": [
+            "Only ordering events chronologically or correlating timestamps across sources without reconstructing incident actions, causality, or hypotheses",
+            "Using a graph or sequence model only to assign an independent class label without producing or materially reasoning over a multi-step incident path",
+            "Naming generic attack phases without deriving, mapping, or structurally synthesizing the actions, observables, and transitions that form a multi-step incident lifecycle"
+          ]
+        }
+      }
+    }
+  },
+  "REPT-01": {
+    "title": "Forensic Result Presentation and Reporting",
+    "description": "Presents analysis through tables, charts, relationship graphs, and timelines and communicates reproducible findings, supporting evidence, and limitations in reports. It includes communicating findings to investigators, courts, and decision-makers in an understandable and verifiable form. Presentation, explainability, reporting standards, and legal use are more central than a new detection algorithm. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "REPT-01-01": {
+        "title": "Forensic Information Visualization",
+        "description": {
+          "definition": "Visualizes time, location, networks, statistics, and data distributions in charts, timelines, and graphs to clarify complex evidence relationships and key findings",
+          "indicators": [
+            "Visually encoding temporal, identity, device, location, or communication relationships in forensic timelines, link charts, or maps",
+            "Developing interfaces for exploration, filtering and drill-down across large evidence collections",
+            "Using visual representations to explain conflicting evidence, uncertainty, or analytical provenance",
+            "Evaluating visualization support for forensic decisions or expert explanation",
+            "Constructing and interpreting relationship-network diagrams whose nodes and edges encode evidentiary samples, entities, similarity, provenance, or incident links"
+          ],
+          "insufficient_alone": [
+            "Merely presenting ordinary tables, charts, plots, screenshots, model explanations, or rendering an already-derived graph as decoration without using the visual encoding to explore, interpret, or explain forensic evidence relationships"
+          ]
+        }
+      },
+      "REPT-01-02": {
+        "title": "Forensic Report Writing",
+        "description": {
+          "definition": "Documents the examination purpose, evidence identifiers, tools and procedures, findings, interpretive basis, limitations, and validation information in a structured report",
+          "indicators": [
+            "Structuring a forensic report with evidence identifiers, tools, procedures, findings, interpretive basis and limitations",
+            "Linking reported findings to source evidence through provenance and audit trails",
+            "Generating reproducible reports from a standard schema or template",
+            "Developing reporting methods for expert explanation, review, or legal submission"
+          ],
+          "insufficient_alone": [
+            "Ordinary paper writing, experimental-result summaries, or log and result-file output without addressing forensic reporting structure or procedure"
+          ]
+        }
+      },
+      "REPT-01-03": {
+        "title": "Evidence Admissibility Review",
+        "description": {
+          "definition": "Reviews authority and procedure, relevance, identity, integrity, chain of custody, and analytical reliability",
+          "indicators": [
+            "Reviewing admissibility, authenticity and reliability",
+            "Reviewing relevance, chain of custody and legal evaluation criteria for digital evidence"
+          ],
+          "insufficient_alone": [
+            "Securing collection authority without reviewing evidence identity, integrity, custody, procedure, or analytical reliability",
+            "Mentioning legal importance, courtroom use, trust, or evidentiary value without evaluating procedural admissibility criteria"
+          ]
+        }
+      }
+    }
+  },
+  "CMNF-01": {
+    "title": "Anti-forensics Countermeasures",
+    "description": "Identifies and addresses deletion, damage, encryption, hiding, tampering, and anonymization that obstruct access to or interpretation of evidence. It includes detecting or bypassing forensic-evasion techniques and recovering damaged or protected evidence. The defining concern is obstruction, concealment, or degradation of evidentiary reliability rather than ordinary analysis. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "CMNF-01-01": {
+        "title": "Damaged Device Handling",
+        "description": {
+          "definition": "Recovers storage components from devices or media damaged by water, impact, or fire and acquires data through a safe interface",
+          "indicators": [
+            "Using chip-off, board repair, or NAND reconstruction",
+            "Recovering water-, fire-, or impact-damaged media"
+          ],
+          "insufficient_alone": [
+            "Recovering logically deleted or corrupt data without handling physically damaged devices or media"
+          ]
+        }
+      },
+      "CMNF-01-02": {
+        "title": "Cryptographic Decryption",
+        "description": {
+          "definition": "Recovers access to otherwise unavailable encrypted evidence by applying recovered or cracked credentials, cryptographic weaknesses, or forensic recovery techniques to transform existing ciphertext or locked encrypted content into accessible plaintext data",
+          "indicators": [
+            "Recovering or cracking a key or password and using it to decrypt protected content",
+            "Exploiting cryptographic implementation or key-management weaknesses to decrypt data",
+            "Decrypting encrypted storage, backups, files, communications, or device content"
+          ],
+          "insufficient_alone": [
+            "Bypassing only a screen lock or access control without decrypting protected data",
+            "Finding a plaintext private key or seed in memory, importing a key into a wallet, or using it to access assets without decrypting ciphertext",
+            "Discussing keys, encryption, or memory remnants without applying them to decryption",
+            "Encrypting, signing, hashing, or otherwise protecting newly generated data, logs, communications, or storage without decrypting existing ciphertext",
+            "Routine authorized reading through the system's intended credentials, keys, access controls, or normal service functionality without recovering otherwise inaccessible encrypted evidence"
+          ]
+        }
+      },
+      "CMNF-01-03": {
+        "title": "Protection Mechanism Bypass",
+        "description": {
+          "definition": "Analyzes screen locks, secure boot, account authentication, access controls, and vendor protections",
+          "indicators": [
+            "Bypassing secure boot, screen locks, or authentication",
+            "Defeating hardware, enclave, or vendor protections"
+          ],
+          "insufficient_alone": [
+            "Decrypting data with an available key without bypassing or defeating an access-control or protection mechanism"
+          ]
+        }
+      },
+      "CMNF-01-04": {
+        "title": "Anti-forensic Indicator Identification",
+        "description": {
+          "definition": "Detects inconsistencies and patterns left by log deletion, timestamp manipulation, trace wiping, encryption, hiding tools, and other evasion activity",
+          "indicators": [
+            "Detecting inconsistencies and residual traces caused by log wiping, timestomping, or artifact cleaning",
+            "Identifying indicators of fileless execution, decoys, or forensic-tool detection",
+            "Linking deletion, encryption, or concealment patterns to attempts to obstruct forensic examination",
+            "Combining missing, altered and temporally inconsistent artifacts to infer anti-forensic activity"
+          ],
+          "insufficient_alone": [
+            "Merely observing encrypted, deleted, or hidden data without identifying indicators or intent of forensic evasion",
+            "Recovering deleted data without analyzing patterns of deletion or trace removal"
+          ]
+        }
+      },
+      "CMNF-01-05": {
+        "title": "Deleted/Damaged Data Recovery",
+        "description": {
+          "definition": "Uses file-system metadata, unallocated space, journals, backups, and file signatures to restore deleted or logically damaged data",
+          "indicators": [
+            "Carving files and recovering deleted records",
+            "Repairing databases and reconstructing fragmented files",
+            "Restoring ransomware-encrypted or logically damaged files from protected history, backups, journals, or verified recovery copies",
+            "Implementing and exercising rollback or protected-history restoration, including verification that damaged or encrypted files are recoverable"
+          ],
+          "insufficient_alone": [
+            "Repairing physical media without restoring logically deleted, fragmented, or corrupt data",
+            "Creating backups, snapshots, or protected copies without implementing or evaluating a restoration procedure"
+          ]
+        }
+      },
+      "CMNF-01-06": {
+        "title": "Forgery and Tampering Detection",
+        "description": {
+          "definition": "Analyzes hashes, signatures, metadata, encoding properties, and temporal or content inconsistencies to detect editing, forgery, or tampering",
+          "indicators": [
+            "Detecting document, log and database tampering",
+            "Detecting provenance inconsistencies and integrity anomalies",
+            "Detecting spoofed, replayed, injected, jammed, or falsified system, sensor, control, or telemetry records through content, timing, provenance, or consistency analysis"
+          ],
+          "insufficient_alone": [
+            "Detecting manipulation only in image or video without examining tampering in documents, logs, databases, or timestamps"
+          ]
+        }
+      },
+      "CMNF-01-07": {
+        "title": "Concealment Detection",
+        "description": {
+          "definition": "Detects data concealed through steganography, hidden areas or files, alternate data streams, and abnormal encoding",
+          "indicators": [
+            "Detecting steganography and hidden partitions",
+            "Finding slack-space, ADS, or covert-container data"
+          ],
+          "insufficient_alone": [
+            "Linking an anonymous actor to an identity without detecting hidden data, steganography, or covert storage"
+          ]
+        }
+      },
+      "CMNF-01-08": {
+        "title": "De-anonymization",
+        "description": {
+          "definition": "Correlating pseudonyms, aliases, addresses, and behavioral patterns with auxiliary data",
+          "indicators": [
+            "Linking pseudonyms, aliases, and identities",
+            "Correlating browser or network fingerprints"
+          ],
+          "insufficient_alone": [
+            "Anonymous or pseudonymous data is merely present without an attribution or linkage analysis",
+            "Clustering IP addresses, tools, attacks, malware, or campaigns without resolving a pseudonymous account, address, device, or actor to a more specific digital or real-world identity"
+          ]
+        }
+      },
+      "CMNF-01-09": {
+        "title": "Trusted Execution Environment (TEE) Handling",
+        "description": {
+          "definition": "Analyzes calls between a TEE and the operating system, shared memory, remote attestation, and hardware behavior to acquire and verify isolated data and execution flow",
+          "indicators": [
+            "Examining Intel SGX, ARM TrustZone and secure enclaves",
+            "Examining confidential computing, remote attestation"
+          ],
+          "insufficient_alone": [
+            "Examining an ordinary virtual machine without analyzing isolated execution, attestation, shared memory, or hardware protection"
+          ]
+        }
+      }
+    }
+  },
+  "CMNF-02": {
+    "title": "Forensic Infrastructure",
+    "description": "Provides reference data, common representations, selection, tool validation, readiness, education, and laboratory controls that support efficient, interoperable, and reliable forensics. It includes research that improves quality, repeatability, standardization, and operational capability across forensic practice. Reference data, representation, validation, readiness, education, and facilities are the main subtopics. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "CMNF-02-01": {
+        "title": "Reference Data Sets",
+        "description": {
+          "definition": "Builds, integrates, maintains, or distributes reusable standard reference material whose known hashes, signatures, artifacts, forensic images, expected findings, or ground truth are used to identify, compare, filter, or verify evidence and forensic correctness in investigations or validation",
+          "indicators": [
+            "Building or updating known-good and known-malicious hash or signature sets",
+            "Creating forensic images, corpora, or samples with explicit ground truth",
+            "Publishing and versioning reusable reference corpora for evidence comparison or identification",
+            "Integrating standardized forensic ground-truth cases with expected findings for correctness validation",
+            "Publishing a documented forensic image, artifact timeline, performed user actions, and machine-comparable expected findings as reusable validation ground truth",
+            "Managing provenance, labels, quality and duplication in reference data"
+          ],
+          "insufficient_alone": [
+            "Using an existing dataset only for training, testing, or performance evaluation without building, maintaining, or improving the reference data itself",
+            "Creating one-off experimental samples, controlled scenarios, generated training data, or ground truth only to evaluate another method when the resulting resource is not a substantive reusable deliverable",
+            "Normalizing, augmenting, or relabeling an existing benchmark solely for the paper's own model experiment without publishing a reusable reference resource",
+            "Building a research benchmark, challenge dataset, or test corpus only to train, rank, or measure a model, algorithm, or tool, without serving as standard reference material for evidence identification, comparison, or forensic correctness"
+          ]
+        }
+      },
+      "CMNF-02-02": {
+        "title": "Common Representation of Digital Evidence",
+        "description": {
+          "definition": "Represents investigation-relevant evidence, artifacts, observables, actions, relationships, and provenance in interoperable schemas or serializations for consistent exchange and reuse across tools or organizations",
+          "indicators": [
+            "Representing evidence ontologies, common schemas, and evidence-exchange formats",
+            "Mapping domain-specific artifacts or observables into an interoperable standard representation",
+            "Representing event-object relationships, provenance, and cross-tool or cross-organization interoperability"
+          ],
+          "insufficient_alone": [
+            "Examining only a forensic-image container format without a common representation of evidence objects, actions, relationships, or provenance",
+            "Using a serialization or schema merely as an incidental input or transport without modeling investigation-relevant artifacts, actions, relationships, observables, or provenance",
+            "A model feature vector, internal database schema, message format, ledger record, or fused representation created only for one system without an interoperability or evidence-exchange objective"
+          ]
+        }
+      },
+      "CMNF-02-03": {
+        "title": "Forensic Tool Validation",
+        "description": {
+          "definition": "Tests the accuracy, reliability, reproducibility, coverage, error conditions, or version-specific results of a digital-forensic tool, method, procedure, or benchmark using ground truth or repeatable validation procedures",
+          "indicators": [
+            "Comparing forensic-tool output with established ground truth",
+            "Testing accuracy and reproducibility across runs, tools, versions, or environments",
+            "Measuring false positives, false negatives, error conditions and support limitations",
+            "Applying a documented validation protocol and standardized test material",
+            "Validating the authors' own forensic method when evidentiary correctness, reliability, repeatability, failure modes, or robustness is a distinct validation objective beyond routine predictive-performance reporting",
+            "Conducting a dedicated comparative or adversarial validation of existing forensic methods with common ground truth and repeatable protocols"
+          ],
+          "insufficient_alone": [
+            "Performing an ordinary performance or accuracy evaluation of a prediction model, sensor algorithm, localization method, IDS, or other non-forensic system",
+            "Using a forensic tool in an experiment or case without evaluating the tool itself",
+            "Reporting train-test accuracy, benchmark scores, ablation, cross-dataset generalization, or robustness only as routine evaluation of the paper's newly proposed predictor or estimator, without a distinct forensic-correctness validation objective"
+          ]
+        }
+      },
+      "CMNF-02-04": {
+        "title": "Forensic Readiness",
+        "description": {
+          "definition": "Establishes logging, time synchronization, retention policy, responsibilities, collection points, and response procedures before incidents",
+          "indicators": [
+            "Designing logging, synchronization, and evidence sources",
+            "Defining pre-incident retention, roles, and response procedures"
+          ],
+          "insufficient_alone": [
+            "Collecting evidence after an incident without pre-establishing logging, synchronization, retention, roles, or collection points"
+          ]
+        }
+      },
+      "CMNF-02-05": {
+        "title": "Forensic Education and Competency Framework",
+        "description": {
+          "definition": "Defines knowledge, skills, and proficiency by role and manages professional capability through education, practical exercises, assessment, certification, and continuing training",
+          "indicators": [
+            "Developing competency frameworks, curricula and certification",
+            "Developing proficiency testing, practical scenarios"
+          ],
+          "insufficient_alone": [
+            "Testing tool accuracy without defining or assessing role-based forensic knowledge, skills, or proficiency"
+          ]
+        }
+      },
+      "CMNF-02-06": {
+        "title": "Laboratory Establishment",
+        "description": {
+          "definition": "Builds a forensic laboratory with controlled access, network separation, calibrated equipment, work records, and information-security controls for safe evidence handling",
+          "indicators": [
+            "Establishing ISO/IEC 17025-style quality systems, evidence rooms",
+            "Establishing access controls, calibration and operating procedures"
+          ],
+          "insufficient_alone": [
+            "Providing personnel training without establishing laboratory access, equipment, calibration, records, or security controls"
+          ]
+        }
+      }
+    }
+  },
+  "CVGF-01": {
+    "title": "Incident Response",
+    "description": "Detects and analyzes security incidents, intrusions, malware, ransomware, and threat intelligence, determines attack paths and impact, and supports evidence preservation, response, recovery, and recurrence prevention. It includes deployable or evaluated security detection and analysis whose direct purpose is identifying malicious activity, as well as post-incident forensic investigation and response. Generic prediction, optimization, or sensing research with only an incidental security example is outside scope. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "CVGF-01-01": {
+        "title": "Event Monitoring, Logging and Analysis",
+        "description": {
+          "definition": "Continuously monitors, collects, or analyzes cyber-security events, logs, network or host telemetry, device security telemetry, and compromise indicators to detect intrusions, cyber anomalies, and evolving incidents, with optional time alignment and correlation",
+          "indicators": [
+            "Monitoring and correlating SIEM, endpoint telemetry",
+            "Monitoring and correlating anomaly detection, audit logging",
+            "Deploying real-time or streaming intrusion detection across edge, fog, cloud, endpoint, or IoT layers",
+            "Implementing an online, streaming, or operational IDS procedure and evaluating that procedure with captured, replayed, benchmark, or simulated cyber-security data",
+            "Executing software or attacks in a controlled environment, continuously observing runtime behaviors or request state, and driving an automated malware, intrusion, containment, or response decision from that telemetry",
+            "Repeatedly observing cyber state or correlated event sequences and driving detection, containment, or response decisions in an implemented or emulated operational loop",
+            "Constructing incident state from related events, flows, alerts, or stages to detect an evolving or multi-step attack rather than classifying each record independently"
+          ],
+          "insufficient_alone": [
+            "Parsing isolated packets or logs without a monitoring, streaming detection, event-analysis, or incident-detection function",
+            "Training or evaluating a model once on independent rows of a static or synthetic benchmark dataset without implementing, simulating, structurally reviewing, or evaluating an operational, streaming, continuous, stateful, or correlated-event analysis function",
+            "Predicting physical defects, structural health, equipment failure, process quality, or general risk without monitoring cyber-security telemetry, compromise indicators, or malicious activity"
+          ]
+        }
+      },
+      "CVGF-01-02": {
+        "title": "Cyber Threat Intelligence (CTI) Utilization",
+        "description": {
+          "definition": "Extracts, structures, links, correlates, or operationally applies external threat intelligence about vulnerabilities, weaknesses, attack patterns, defensive techniques, actors, infrastructure, tactics, procedures, indicators, and relationships to risk assessment, detection, investigation, or campaign analysis",
+          "indicators": [
+            "Extracting CTI entities and relations from threat reports into ontologies or knowledge graphs",
+            "Correlating indicators, TTPs and ATT&CK mapping",
+            "Correlating threat-actor or campaign attribution",
+            "Combining vulnerability, weakness, attack-pattern, and defensive-knowledge sources to assess risk or guide detection and analysis",
+            "Retrieving or deriving threat-specific reputation, indicator history, malicious infrastructure context, TTPs, or public threat records and applying them to explain or score particular alerts, flows, assets, or incidents",
+            "Automatically classifying or structuring open threat-intelligence feed records into malware, exploit, attack, actor, infrastructure, or campaign categories for threat-hunting or security decisions"
+          ],
+          "insufficient_alone": [
+            "Listing threat indicators or actor information without extracting, structuring, linking, or correlating threat-intelligence meaning",
+            "Citing vulnerability identifiers or threat-knowledge sources only as labels or background without applying their information to the paper's risk, detection, or analysis method",
+            "Applying generic NLP to non-CTI text without analyzing threat actors, infrastructure, TTPs, indicators, or campaigns",
+            "Adding generic protocol, location, or domain context that carries no threat-specific meaning and is not used in risk, detection, investigation, or explanation"
+          ]
+        }
+      },
+      "CVGF-01-03": {
+        "title": "Malware Response",
+        "description": {
+          "definition": "Detects, identifies, classifies, or analyzes malware samples, malicious payloads, malware-infected processes or memory, execution behavior, and malware-attributed network traffic to determine malicious functions, persistence, communications, indicators, or impact",
+          "indicators": [
+            "Analyzing malware reverse engineering, sandboxing and unpacking",
+            "Analyzing behavior, C2 and persistence analysis",
+            "Detecting or classifying malware binaries, payloads, infected processes, memory artifacts, or encrypted malware communication and C2 traffic",
+            "Executing malware or a malware-attributed attack emulation and directly applying or evaluating containment, process, file, account, endpoint, or network response actions",
+            "Constructing or analyzing malicious documents or payload variants to measure, evade, harden, or explain malware detection behavior"
+          ],
+          "insufficient_alone": [
+            "Mentioning suspicious files or malware without static or dynamic analysis of their functions and impact",
+            "Detecting generic intrusions, attacks, anomalies, scans, spoofing, denial of service, or botnet activity without identifying or analyzing malware, a malicious payload, malware infection, or malware-attributed traffic"
+          ]
+        }
+      },
+      "CVGF-01-04": {
+        "title": "Ransomware Response",
+        "description": {
+          "definition": "Detects and analyzes ransomware encryption, propagation, execution, extortion, negotiation, victim impact, and response decisions, and investigates containment and recovery through memory, backups, and cryptographic weaknesses",
+          "indicators": [
+            "Investigating ransomware detection, family analysis",
+            "Investigating key recovery, victim-file recovery",
+            "Analyzing victim negotiation, payment, extortion, information-leak risk, and response strategy"
+          ],
+          "insufficient_alone": [
+            "General malware analysis without ransomware-specific encryption, propagation, or extortion behavior"
+          ]
+        }
+      },
+      "CVGF-01-05": {
+        "title": "Technology Leakage Response",
+        "description": {
+          "definition": "Correlates access, copying, transfer, and exfiltration traces for documents, source code, and designs",
+          "indicators": [
+            "Tracing DLP evidence, insider exfiltration and USB",
+            "Tracing email and cloud transfer, source-code similarity"
+          ],
+          "insufficient_alone": [
+            "General privacy or copyright investigation without analyzing access to or exfiltration of protected technology or trade secrets"
+          ]
+        }
+      },
+      "CVGF-01-06": {
+        "title": "Personal Data Breach Response",
+        "description": {
+          "definition": "Analyzes unauthorized access, query, modification, transfer logs, and leaked data",
+          "indicators": [
+            "Determining privacy breaches, personal-data exfiltration",
+            "Determining breach-scope estimation and identification of leaked information"
+          ],
+          "insufficient_alone": [
+            "General incident analysis without determining the affected personal data, scope, or disclosure path"
+          ]
+        }
+      },
+      "CVGF-01-07": {
+        "title": "Copyright Infringement Response",
+        "description": {
+          "definition": "Analyzes traces of unlawful copying, modification, and distribution with platform or network records and content-identification methods",
+          "indicators": [
+            "Establishing copyright forensics, content fingerprints",
+            "Establishing illegal distribution networks, piracy evidence"
+          ],
+          "insufficient_alone": [
+            "Checking content authenticity without analyzing unlawful copying, distribution, ownership, or infringement evidence"
+          ]
+        }
+      }
+    }
+  },
+  "CVGF-02": {
+    "title": "Multimedia Forensics",
+    "description": "Analyzes the source, editing or manipulation, integrity, meaning, and distribution context of image, video, audio, and text content. It includes research on content source, authenticity, and meaning for deepfakes, copyright, image-based abuse, and disinformation. Signal and content properties are more central than generic file-structure parsing. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "CVGF-02-01": {
+        "title": "Media Source Analysis",
+        "description": {
+          "definition": "Uses sensor noise, compression or encoding parameters, metadata, and generation traces to infer or recover a media item's capture device, creation software, encoding process, compression history, or distribution provenance",
+          "indicators": [
+            "Inferring camera-source identification, PRNU and codec fingerprints",
+            "Inferring acoustic environments, metadata provenance",
+            "Attributing a document or media file to creator software or software version from byte structure, encoding, or metadata traces",
+            "Recovering JPEG quantization steps or compression parameters from DCT and encoding artifacts for forensic provenance analysis"
+          ],
+          "insufficient_alone": [
+            "Detecting manipulation without inferring the capture device, creation tool, or distribution path"
+          ]
+        }
+      },
+      "CVGF-02-02": {
+        "title": "Media Tampering Detection and Integrity Verification",
+        "description": {
+          "definition": "Examines discontinuities in pixels, frames, audio, and metadata and verifies hashes, signatures, or content credentials to detect editing and synthesis",
+          "indicators": [
+            "Detecting image, video and audio forgery detection and deepfakes",
+            "Detecting splicing, copy-move and recompression"
+          ],
+          "insufficient_alone": [
+            "Inferring a generating device or tool without testing the media for editing, synthesis, or integrity anomalies",
+            "Generating adversarial or anti-forensic media that defeats an existing detector without implementing detection or integrity verification of the manipulated content"
+          ]
+        }
+      },
+      "CVGF-02-03": {
+        "title": "Multimodal Content Analysis",
+        "description": {
+          "definition": "Jointly analyzes video, audio, images, and text to assess semantic, temporal, speaker, and scene consistency and case relevance across modalities",
+          "indicators": [
+            "Assessing vision-language, audio-visual and text-image consistency",
+            "Assessing speaker-lip synchronization and cross-modal meaning"
+          ],
+          "insufficient_alone": [
+            "Detecting forgery in one medium without analyzing consistency across image, video, audio, or text modalities"
+          ]
+        }
+      }
+    }
+  },
+  "CVGF-03": {
+    "title": "Virtual Asset (Cryptocurrency) Forensics",
+    "description": "Combines on-chain records with off-chain wallet, exchange, and service data to determine cryptocurrency movement, concealment, exchange, cash-out paths, and actors. It includes investigative tracing and attribution for cryptocurrency crime, laundering, fraud, and illicit payment. General blockchain performance or security without an evidentiary purpose is outside the core scope. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "CVGF-03-01": {
+        "title": "On-chain Transaction Tracing",
+        "description": {
+          "definition": "Analyzes transaction inputs and outputs, token transfers, smart-contract interactions, and address relationships",
+          "indicators": [
+            "Tracing transaction graphs, address clustering and fund-flow tracing",
+            "Tracing smart-contract events and token transfers"
+          ],
+          "insufficient_alone": [
+            "Reconstructing only mixer or evasion behavior without tracing ordinary inputs, outputs, transfers, and address relationships"
+          ]
+        }
+      },
+      "CVGF-03-02": {
+        "title": "On-chain Obfuscation Countermeasures",
+        "description": {
+          "definition": "Reconstructs flows obscured by mixers, chain hopping, privacy mechanisms, and distributed transfers using time, value, pattern, and cross-chain correlation",
+          "indicators": [
+            "Reconstructing mixers, tumblers and chain hopping",
+            "Reconstructing peel chains, privacy coins and bridges"
+          ],
+          "insufficient_alone": [
+            "Ordinary on-chain tracing without mixers, chain hopping, privacy mechanisms, or another deliberate obfuscation structure"
+          ]
+        }
+      },
+      "CVGF-03-03": {
+        "title": "Off-chain Transaction Tracing",
+        "description": {
+          "definition": "Analyzes exchange deposits and withdrawals, wallet apps, payment services, authentication, device, and network logs",
+          "indicators": [
+            "Linking addresses with exchange KYC and wallet artifacts",
+            "Correlating account, IP, device, and payment records"
+          ],
+          "insufficient_alone": [
+            "Using only blockchain-ledger data without linking addresses to exchange, wallet, authentication, device, or network records"
+          ]
+        }
+      }
+    }
+  },
+  "CVGF-04": {
+    "title": "Industry and Specialized Domain Forensics",
+    "description": "Analyzes devices, sensors, control commands, operational logs, and communications in industrial and specialized environments to determine incidents, malfunctions, and intrusions. It includes research that jointly interprets digital records and physical behavior in cyber-physical systems. Device-specific protocols, safety, operational context, and domain knowledge distinguish it from general computer forensics. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "CVGF-04-01": {
+        "title": "Mobility (Drone, Vehicle, Vessel) Forensics",
+        "description": {
+          "definition": "Analyzes location, trajectory, sensor, control, operation, and communication records from drones, vehicles, and vessels",
+          "indicators": [
+            "Reconstructing drone flight logs, vehicle EDR and IVI and CAN",
+            "Reconstructing vessel VDR, AIS and ECDIS and GPS or sensor fusion for accident reconstruction"
+          ],
+          "insufficient_alone": [
+            "Analyzing aircraft or satellite records without examining drone, vehicle, or vessel operation"
+          ]
+        }
+      },
+      "CVGF-04-02": {
+        "title": "Robot Forensics",
+        "description": {
+          "definition": "Analyzes control records, sensor data, work histories, and environmental perception from service, industrial, and autonomous robots",
+          "indicators": [
+            "Reconstructing robot control logs, ROS artifacts and autonomy stacks",
+            "Reconstructing actuators, sensors and task histories"
+          ],
+          "insufficient_alone": [
+            "Analyzing vehicle or drone movement without examining robot control, sensing, task history, or malfunction"
+          ]
+        }
+      },
+      "CVGF-04-03": {
+        "title": "Healthcare Forensics",
+        "description": {
+          "definition": "Analyzes medical devices, biosignal equipment, hospital systems, and telemedicine records",
+          "indicators": [
+            "Investigating medical-device logs, EHR and wearables",
+            "Investigating biosignals, PACS and telemedicine"
+          ],
+          "insufficient_alone": [
+            "General privacy-breach analysis without a medical-device, clinical-care, or hospital-system context"
+          ]
+        }
+      },
+      "CVGF-04-04": {
+        "title": "Industrial Control System (ICS/SCADA) Forensics",
+        "description": {
+          "definition": "Collects, preserves, or analyzes digital evidence from ICS, SCADA, industrial control devices, and smart factories, including device images, memory, commands, state changes, process data, logs, and network records",
+          "indicators": [
+            "Acquiring or preserving memory, disk images, logs, or configurations from ICS devices",
+            "Reconstructing PLC, HMI and historians",
+            "Reconstructing SCADA logs, industrial protocols and process state",
+            "Implementing isolation or forensic collection and analysis specifically for compromised industrial systems"
+          ],
+          "insufficient_alone": [
+            "Analyzing general enterprise IT logs without examining industrial commands, process states, sensors, or actuators"
+          ]
+        }
+      },
+      "CVGF-04-05": {
+        "title": "Aerospace Forensics",
+        "description": {
+          "definition": "Analyzes operational, sensor, and communication records from aircraft, satellites, ground stations, and navigation equipment",
+          "indicators": [
+            "Reconstructing aircraft flight data, avionics",
+            "Reconstructing ground stations, GNSS spoofing"
+          ],
+          "insufficient_alone": [
+            "Analyzing drone, vehicle, or vessel records without examining aircraft, satellite, ground-station, or navigation evidence"
+          ]
+        }
+      }
+    }
+  },
+  "CVGF-05": {
+    "title": "Artificial Intelligence Forensics",
+    "description": "Uses AI to automate forensic analysis while also treating AI models, operational environments, and generated content as evidence subjects. It includes both AI used as a forensic tool and AI systems or outputs treated as evidence, separated into three subcategories. General AI performance research must be directly connected to evidence analysis, attribution, or verification. Listed terms and cases are non-exhaustive examples; research making substantive contributions to adjacent technologies may relate to multiple categories.",
+    "child_tech": {
+      "CVGF-05-01": {
+        "title": "Intelligent Forensic Analysis Automation",
+        "description": {
+          "definition": "Uses AI to automate digital-forensic evidence or artifact preparation, classification, correlation, anomaly or malware analysis, prioritization, and reporting support, narrowing material for forensic examiner or incident-investigation review",
+          "indicators": [
+            "Automating machine-learning evidence triage, artifact classification",
+            "Automating timeline generation, agentic forensics",
+            "Classifying malware from binaries, memory dumps, network traces, or other forensic artifacts",
+            "Automating forensic media authenticity, provenance, or encoding-parameter analysis and prioritizing questioned media for examiner review",
+            "Using AI to extract or quality-control incident indicators from exploits, artifacts, or threat records for post-incident analysis"
+          ],
+          "insufficient_alone": [
+            "Investigating an AI model without using AI to automate evidence preparation, classification, correlation, or prioritization",
+            "Applying machine learning to general intrusion detection, security monitoring, vulnerability prediction, software quality, or network classification without a digital-forensic evidence-analysis or incident-investigation function",
+            "Using deterministic hashing, string comparison, similarity, graph drawing, clustering, or visualization alone without a learned or reasoning AI method performing a defined forensic analysis or narrowing evidence for examiner review"
+          ]
+        }
+      },
+      "CVGF-05-02": {
+        "title": "Forensics of AI Systems",
+        "description": {
+          "definition": "Analyzes data provenance, model versions, prompts, inference logs, configuration changes, and external integrations across development, training, deployment, and operation",
+          "indicators": [
+            "Reconstructing AI-model forensics, training-data provenance",
+            "Reconstructing model extraction, poisoning and prompt injection"
+          ],
+          "insufficient_alone": [
+            "Detecting only whether final content is synthetic without examining AI-system data provenance, model versions, prompts, inference logs, or configuration changes",
+            "Using, training, testing, explaining, attacking, or validating an AI model as the paper's analytical or security method without investigating the AI system itself as an evidence source or incident target"
+          ]
+        }
+      },
+      "CVGF-05-03": {
+        "title": "AI-generated Content Identification and Abuse Response",
+        "description": {
+          "definition": "Analyzes generation artifacts, watermarks, model traits, and distribution paths in synthetic image, video, audio, and text",
+          "indicators": [
+            "Detecting synthetic image, audio, video, or text",
+            "Attributing generated content with fingerprints or watermarks"
+          ],
+          "insufficient_alone": [
+            "Analyzing internal AI-service logs without identifying generated content or tracing its attribution, distribution, or abuse"
+          ]
+        }
+      }
+    }
+  }
+}

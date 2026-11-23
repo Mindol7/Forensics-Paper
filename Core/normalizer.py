@@ -1,18 +1,45 @@
-# normalizer.py #
-"""
-    - KCI/Scopus에서 수집한 '원본 논문 데이터'를 표준화된 구조로 변환하는 모듈
-    - 다양한 형식 raw 데이터 -> 정리된 NormalizedPaper 객체 변환 -> 이후 필터링/저장/분석에 사용.
-"""
+"""Normalize collector records into the established database column model."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict, field
-from datetime import datetime
 import re
-from typing import Any, Iterable
+from dataclasses import asdict, dataclass, field
+from typing import Any, Iterable, Protocol
 
-from Collector.kci import KciRawPaper
-from Collector.scopus import ScopusRawPaper
+
+class KciPaperInput(Protocol):
+    """Collector-neutral projection required by the KCI normalizer."""
+
+    matched_query: str
+    matched_field: str
+    arti_id: str | None
+    journal_id: str | None
+    journal_name: str | None
+    publisher_name: str | None
+    pub_year: str | None
+    pub_mon: str | None
+    volume: str | None
+    issue: str | None
+    article_categories: str | None
+    article_regularity: str | None
+    title_original: str | None
+    title_foreign: str | None
+    title_english: str | None
+    abstract_original: str | None
+    abstract_english: str | None
+    keywords: list[str]
+    authors: list[str]
+    doi: str | None
+    uci: str | None
+    url: str | None
+    first_page: str | None
+    last_page: str | None
+    issn: str | None
+    eissn: str | None
+    citation_count_kci: str | None
+    citation_count_wos: str | None
+    is_open_access: str | None
+    verified: str | None
 
 
 def _to_int(value: str | None) -> int | None:
@@ -110,7 +137,7 @@ def _compose_pub_date(pub_year: str | None, pub_mon: str | None) -> str | None:
     return pub_year
 
 
-def normalize_kci_paper(raw_paper: KciRawPaper) -> NormalizedPaper:
+def normalize_kci_paper(raw_paper: KciPaperInput) -> NormalizedPaper:
     title = _pick_first(raw_paper.title_original, raw_paper.title_english, raw_paper.title_foreign)
     abstract = _pick_first(raw_paper.abstract_original, raw_paper.abstract_english)
     registered_at = _compose_pub_date(raw_paper.pub_year, raw_paper.pub_mon)
@@ -163,86 +190,7 @@ def normalize_kci_paper(raw_paper: KciRawPaper) -> NormalizedPaper:
     )
 
 
-def normalize_kci_papers(raw_papers: Iterable[KciRawPaper]) -> list[NormalizedPaper]:
+def normalize_kci_papers(
+    raw_papers: Iterable[KciPaperInput],
+) -> list[NormalizedPaper]:
     return [normalize_kci_paper(raw_paper) for raw_paper in raw_papers]
-
-
-def normalize_scopus_datetime(value: str | None) -> str | None:
-    if not value:
-        return None
-    text = value.strip()
-    formats = ["%Y-%m-%d", "%Y-%m", "%Y"]
-    for fmt in formats:
-        try:
-            parsed = datetime.strptime(text, fmt)
-            if fmt == "%Y-%m-%d":
-                return parsed.date().isoformat()
-            if fmt == "%Y-%m":
-                return f"{parsed.year:04d}-{parsed.month:02d}"
-            return f"{parsed.year:04d}"
-        except ValueError:
-            continue
-    return text
-
-
-def _extract_year_from_date(date_text: str | None) -> int | None:
-    if not date_text:
-        return None
-    match = re.match(r"^(\d{4})", date_text)
-    if not match:
-        return None
-    return int(match.group(1))
-
-
-def _compose_scopus_issue_id(volume: str | None, issue_identifier: str | None) -> str | None:
-    if volume and issue_identifier:
-        return f"{volume}_{issue_identifier}"
-    if volume:
-        return volume
-    if issue_identifier:
-        return issue_identifier
-    return None
-
-
-def normalize_scopus_paper(raw_paper: ScopusRawPaper) -> NormalizedPaper:
-    registered_at = normalize_scopus_datetime(raw_paper.cover_date)
-
-    return NormalizedPaper(
-        source="scopus",
-        source_id=raw_paper.scopus_id or raw_paper.doi or raw_paper.title or "unknown",
-        title=raw_paper.title,
-        title_kor=None,
-        title_eng=raw_paper.title,
-        title_other=None,
-        doi=raw_paper.doi,
-        uci=None,
-        url=raw_paper.url,
-        abstract=raw_paper.abstract,
-        abstract_kor=None,
-        abstract_eng=raw_paper.abstract,
-        abstract_other=None,
-        keywords=split_keywords(*raw_paper.keywords),
-        keyword_text_kor=None,
-        keyword_text_eng="; ".join(raw_paper.keywords) if raw_paper.keywords else None,
-        keyword_text_other=None,
-        authors=list(raw_paper.author_names),
-        journal_id=raw_paper.publication_name,
-        institution_id=None,
-        issue_id=_compose_scopus_issue_id(raw_paper.volume, raw_paper.issue_identifier),
-        first_page=None,
-        final_page=None,
-        page_count=None,
-        issn=raw_paper.issn,
-        eissn=raw_paper.eissn,
-        subject_code=None,
-        is_fulltext=None,
-        registered_at=registered_at,
-        updated_at=None,
-        publication_year=_extract_year_from_date(raw_paper.cover_date),
-        matched_queries=[raw_paper.matched_query] if raw_paper.matched_query else [],
-        raw_payload=raw_paper.raw_item,
-    )
-
-
-def normalize_scopus_papers(raw_papers: Iterable[ScopusRawPaper]) -> list[NormalizedPaper]:
-    return [normalize_scopus_paper(raw_paper) for raw_paper in raw_papers]

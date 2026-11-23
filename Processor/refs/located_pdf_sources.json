@@ -1,0 +1,183 @@
+{
+  "schema_version": 1,
+  "description": "KCI·DBpia·교보 자동 검색으로 찾지 못한 논문의, 사람이 확인한 원문 제공처. Collector/located_pdf.py 가 이 표대로 공식 페이지에서 내려받는다.",
+  "sources": [
+    {
+      "source_id": "ART002917601",
+      "platform": "koreascience",
+      "landing_url": "https://koreascience.kr/article/JAKO202204859411350.page",
+      "pdf_url": "https://koreascience.kr/article/JAKO202204859411350.pdf",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003272251",
+      "platform": "kricm",
+      "landing_url": "http://www.kricm.or.kr/bbs/board.php?bo_table=review&wr_id=644",
+      "pdf_url": "http://www.kricm.or.kr/bbs/download.php?bo_table=review&wr_id=644&no=0",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003365574",
+      "platform": "dbpia",
+      "landing_url": "https://www.dbpia.co.kr/journal/articleDetail?nodeId=NODE12925021"
+    },
+    {
+      "source_id": "ART003369056",
+      "platform": "kci_portal",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003372218",
+      "platform": "kci_portal",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003372228",
+      "platform": "kci_portal",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003379146",
+      "platform": "kci_portal",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003379152",
+      "platform": "kci_portal",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003368339",
+      "platform": "dbpia",
+      "landing_url": "https://www.dbpia.co.kr/journal/articleDetail?nodeId=NODE12933897"
+    },
+    {
+      "source_id": "ART003379106",
+      "platform": "kyobo",
+      "landing_url": "https://scholar.kyobobook.co.kr/article/detail/4050072964575"
+    },
+    {
+      "source_id": "ART003061474",
+      "platform": "kiss",
+      "landing_url": "https://kiss.kstudy.com/Detail/Ar?key=4082732"
+    },
+    {
+      "source_id": "ART003367450",
+      "platform": "kiss",
+      "landing_url": "https://kiss.kstudy.com/Detail/Ar?key=4268506"
+    },
+    {
+      "source_id": "ART003367452",
+      "platform": "kiss",
+      "landing_url": "https://kiss.kstudy.com/Detail/Ar?key=4268508"
+    },
+    {
+      "source_id": "ART003070789",
+      "platform": "kiss",
+      "landing_url": "https://kiss.kstudy.com/Detail/Ar?key=4086937"
+    },
+    {
+      "source_id": "ART003347836",
+      "platform": "kci_portal",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003350706",
+      "platform": "kci_portal",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003351507",
+      "platform": "kci_portal",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003354291",
+      "platform": "kci_portal",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003361371",
+      "platform": "kci_portal",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003361675",
+      "platform": "kci_portal",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003362300",
+      "platform": "kci_portal",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003376120",
+      "platform": "kci_portal",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003380262",
+      "platform": "kci_portal",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003380936",
+      "platform": "kci_portal",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003385399",
+      "platform": "kci_portal",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003386820",
+      "platform": "kci_portal",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003388806",
+      "platform": "kci_portal",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003388851",
+      "platform": "kci_portal",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003394594",
+      "platform": "kci_portal",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003395136",
+      "platform": "kci_portal",
+      "open_access": true
+    },
+    {
+      "source_id": "ART003359741",
+      "platform": "koreascience",
+      "landing_url": "https://koreascience.kr/article/JAKO202620250576769.page",
+      "pdf_url": "https://koreascience.kr/article/JAKO202620250576769.pdf",
+      "open_access": true
+    }
+  ],
+  "excluded_foreign_publisher_sites": {
+    "reason": "수집 목적은 국내 논문이므로 해외 출판사 사이트(ScienceDirect, SpringerLink, Techno-Press)는 다운로드 대상에서 제외",
+    "source_ids": [
+      "ART002859085",
+      "ART003144183",
+      "ART003364081",
+      "ART003363613"
+    ]
+  },
+  "no_public_full_text": {
+    "reason": "법과학의 신동향 13호의 두 논문은 대검찰청 게시판의 호별 압축 파일에 들어 있지 않고 KCI는 미리보기만 제공합니다(2026-09-20 확인). 공개 원문이 생기면 sources에 추가하세요.",
+    "source_ids": [
+      "ART003331345",
+      "ART003331352"
+    ]
+  }
+}

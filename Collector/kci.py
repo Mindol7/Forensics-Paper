@@ -17,7 +17,7 @@ from typing import Any, Callable
 import requests
 from lxml import etree
 
-from Core.query_builder import KciQuery
+from Core.collect_builder import KciQuery
 
 
 ProgressCallback = Callable[[str], None]
@@ -216,11 +216,10 @@ class KciCollector:
                 matched_field=matched_field,
             )
             fetched_count += len(page_items)
-            if on_page is not None:
-                on_page(
-                    f"page {page_no}: +{len(page_items)} "
-                    f"(total so far {fetched_count} / {total_count})"
-                )
+            finished = not page_items or fetched_count >= total_count or page_no >= effective_cap
+            if on_page is not None and (page_no == 1 or page_no % 10 == 0 or finished):
+                share = f" ({fetched_count / total_count:.0%})" if total_count else ""
+                on_page(f"{fetched_count:,}/{total_count:,}건 받음{share} · {page_no}쪽째")
             yield page_items, total_count
             if not page_items:
                 break
